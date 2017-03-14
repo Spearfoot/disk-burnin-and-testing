@@ -1,3 +1,4 @@
+## Bash script for burn-in and testing of drives
 _disk-burnin.sh_ is a Bash script to simplify the process of burning-in disks. It is intended for use only on disks which do not contain any data, such as new disks or disks which are being tested or re-purposed.                               
                                                                            
 Be aware that:                                                             
@@ -57,5 +58,4 @@ Requires the smartmontools, available at https://www.smartmontools.org
                                                                            
 Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
 
-Written by Keith Nash, March 2017.
-                                                                           
+Written by Keith Nash, March 2017.                                                                         
