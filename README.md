@@ -42,7 +42,7 @@ The only required command-line argument is the device specifier, e.g.:
                                                                            
 You can run the script in 'dry run mode' to check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. The script is distributed with 'dry runs' enabled, so you will need to edit the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.                                                           
 
-Before using the script on FreeBSD systems (including FreeNAS) you must first execute this `sysctl` command to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
+Before using the script on FreeBSD systems (including FreeNAS) you must first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
 `sysctl kern.geom.debugflags=0x10`
                                                                            
