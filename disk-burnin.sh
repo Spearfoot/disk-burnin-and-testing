@@ -71,6 +71,12 @@
 # Dry_Run variable below, setting it to 0, in order to actually perform
 # tests on drives.
 # 
+# Before using the script on FreeBSD systems (including FreeNAS) you must
+# first execute this sysctl command to alter the kernel's geometry debug
+# flags. This allows badblocks to write to the entire disk:
+#
+#   sysctl kern.geom.debugflags=0x10
+# 
 # Tested under:
 #   FreeNAS 9.10.2 (FreeBSD 10.3-STABLE)
 #   Ubuntu Server 16.04.2 LTS
