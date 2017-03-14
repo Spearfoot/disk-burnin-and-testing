@@ -1,5 +1,5 @@
 ## Bash script for burn-in and testing of drives
-_disk-burnin.sh_ is a Bash script to simplify the process of burning-in disks. It is intended for use only on disks which do not contain data, such as new disks or disks which are being tested or re-purposed.                               
+_disk-burnin.sh_ is a Bash script I wrote to simplify the process of burning-in disks. It is intended for use only on disks which do not contain data, such as new disks or disks which are being tested or re-purposed. I was inspired by the ["How To: Hard Drive Burn-In Testing"](https://forums.freenas.org/index.php?threads/how-to-hard-drive-burn-in-testing.21451/) thread on the FreeNAS forum and want to give full props to the good folks who contributed to that thread. 
                                                                            
 Be aware that:                                                             
                                                                            
@@ -41,6 +41,10 @@ The only required command-line argument is the device specifier, e.g.:
 ...will run the burn-in test on device /dev/sda
                                                                            
 You can run the script in 'dry run mode' to check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. The script is distributed with 'dry runs' enabled, so you will need to edit the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.                                                           
+
+Before using the script on FreeBSD systems (including FreeNAS) you must first execute this `sysctl` command to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
+
+`sysctl kern.geom.debugflags=0x10`
                                                                            
 Tested under:                                                              
 * FreeNAS 9.10.2-U1 (FreeBSD 10.3-STABLE)                                     
