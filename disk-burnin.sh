@@ -72,7 +72,7 @@
 # tests on drives.
 # 
 # Before using the script on FreeBSD systems (including FreeNAS) you must
-# first execute this sysctl command to alter the kernel's geometry debug
+# first execute the sysctl command below to alter the kernel's geometry debug
 # flags. This allows badblocks to write to the entire disk:
 #
 #   sysctl kern.geom.debugflags=0x10
