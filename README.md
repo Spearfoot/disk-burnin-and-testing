@@ -1,5 +1,5 @@
 ## Bash script for burn-in and testing of drives
-_disk-burnin.sh_ is a Bash script to simplify the process of burning-in disks. It is intended for use only on disks which do not contain any data, such as new disks or disks which are being tested or re-purposed.                               
+_disk-burnin.sh_ is a Bash script to simplify the process of burning-in disks. It is intended for use only on disks which do not contain data, such as new disks or disks which are being tested or re-purposed.                               
                                                                            
 Be aware that:                                                             
                                                                            
