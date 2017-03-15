@@ -72,7 +72,7 @@
 # tests on drives.
 # 
 # Before using the script on FreeBSD systems (including FreeNAS) you must
-# first execute the sysctl command below to alter the kernel's geometry debug
+# first execute this sysctl command to alter the kernel's geometry debug
 # flags. This allows badblocks to write to the entire disk:
 #
 #   sysctl kern.geom.debugflags=0x10
@@ -132,41 +132,41 @@ Host_Name=$(hostname -s)
 
 # Obtain the disk model and serial number:
 
-Disk_Model=$(smartctl -i /dev/${Drive} | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
 
 if [ -z "$Disk_Model" ]; then
-  Disk_Model=$(smartctl -i /dev/${Drive} | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
 fi
 
-Disk_Model=$(tr ' ' '_' <<< ${Disk_Model})
+Disk_Model=$(tr ' ' '_' <<< "$Disk_Model")
 
-Serial_Number=$(smartctl -i /dev/${Drive} | grep "Serial Number" | awk '{print $3}')
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}')
 
-Serial_Number=$(tr ' ' '-' <<< ${Serial_Number})
+Serial_Number=$(tr ' ' '-' <<< "$Serial_Number")
 
 # Form the log and bad blocks data filenames:
 
 Log_File=$(tr ' ' '-' <<< "burnin-${Disk_Model}_${Serial_Number}.log")
-Log_File=$(tr -s '-' <<< ${Log_File})
-Log_File=$(tr -s '_' <<< ${Log_File})
+Log_File=$(tr -s '-' <<< "$Log_File")
+Log_File=$(tr -s '_' <<< "$Log_File")
 Log_File=$Log_Dir/$Log_File
 
 BB_File=$(tr ' ' '-' <<< "burnin-${Disk_Model}_${Serial_Number}.bb")
-BB_File=$(tr -s '-' <<< ${BB_File})
-BB_File=$(tr -s '_' <<< ${BB_File})
+BB_File=$(tr -s '-' <<< "$BB_File")
+BB_File=$(tr -s '_' <<< "$BB_File")
 BB_File=$BB_Dir/$BB_File
 
 # Query the short and extended test duration, in minutes. Use the values to
 # caculate how long we should sleep after starting the SMART tests:
 
-Short_Test_Minutes=$(smartctl -a /dev/${Drive} | pcregrep -M "Short self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
+Short_Test_Minutes=$(smartctl -a /dev/"$Drive" | pcregrep -M "Short self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
 
-Extended_Test_Minutes=$(smartctl -a /dev/${Drive} | pcregrep -M "Extended self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
+Extended_Test_Minutes=$(smartctl -a /dev/"$Drive" | pcregrep -M "Extended self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
 
 # If the extended test duration is short (less than 60 minutes), assume we have
 # an SSD and set the extended test delay the same as the short test delay:
 
-if (( $Extended_Test_Minutes < 60 )); then
+if (( Extended_Test_Minutes < 60 )); then
   Extended_Test_Extra_Delay=$Short_Test_Extra_Delay
 fi
 
@@ -181,7 +181,7 @@ Extended_Test_Sleep=$((Extended_Test_Minutes*60+Extended_Test_Extra_Delay))
 
 echo_str()
 {
-  echo $1 | tee -a ${Log_File}
+  echo "$1" | tee -a "$Log_File"
 }
 
 push_header()
@@ -194,11 +194,11 @@ run_short_test()
   push_header
   echo_str "+ Run SMART short test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( $Dry_Run == 0 )); then
-    smartctl -t short /dev/$Drive | tee -a ${Log_File}
+  if (( Dry_Run == 0 )); then
+    smartctl -t short /dev/"$Drive" | tee -a "$Log_File"
     echo_str "Sleep ${Short_Test_Sleep} seconds until the short test finishes"
     sleep ${Short_Test_Sleep}
-    smartctl -a /dev/$Drive | tee -a ${Log_File}
+    smartctl -a /dev/"$Drive" | tee -a "$Log_File"
   else
     echo_str "Dry run: would start the SMART short test and sleep ${Short_Test_Sleep} seconds until the test finishes"
   fi
@@ -210,11 +210,11 @@ run_extended_test()
   push_header
   echo_str "+ Run SMART extended test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( $Dry_Run == 0 )); then
-    smartctl -t long /dev/$Drive | tee -a ${Log_File}
+  if (( Dry_Run == 0 )); then
+    smartctl -t long /dev/"$Drive" | tee -a "$Log_File"
     echo_str "Sleep ${Extended_Test_Sleep} seconds until the long test finishes"
     sleep ${Extended_Test_Sleep}
-    smartctl -a /dev/$Drive | tee -a ${Log_File}
+    smartctl -a /dev/"$Drive" | tee -a "$Log_File"
   else
     echo_str "Dry run: would start the SMART extended test and sleep ${Extended_Test_Sleep} seconds until the test finishes"
   fi
@@ -226,11 +226,11 @@ run_badblocks_test()
   push_header
   echo_str "+ Run badblocks test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( $Dry_Run == 0 )); then
+  if (( Dry_Run == 0 )); then
 #
 #   This is the command which erases all data on the disk:
 #
-    badblocks -b 4096 -wsv -o ${BB_File} /dev/$Drive | tee -a ${Log_File}
+    badblocks -b 4096 -wsv -o "$BB_File" /dev/"$Drive" | tee -a "$Log_File"
   else
     echo_str "Dry run: would run badblocks -b 4096 -wsv -o ${BB_File} /dev/${Drive}"
   fi
@@ -243,7 +243,7 @@ run_badblocks_test()
 #
 ########################################################################
 
-rm $Log_File
+rm "$Log_File"
 push_header
 echo_str "+ Started burn-in of /dev/${Drive} on ${Host_Name} : $(date)"
 push_header
