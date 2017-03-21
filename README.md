@@ -1,5 +1,5 @@
 ## Bash script for burn-in and testing of drives
-`disk-burnin.sh` is a Bash script I wrote to simplify the process of burning-in disks. It is intended for use only on disks which do not contain data, such as new disks or disks which are being tested or re-purposed. I was inspired by the ["How To: Hard Drive Burn-In Testing"](https://forums.freenas.org/index.php?threads/how-to-hard-drive-burn-in-testing.21451/) thread on the FreeNAS forum and I want to give full props to the good folks who contributed to that thread. 
+`disk-burnin.sh` is a shell script I wrote to simplify the process of burning-in disks. It is intended for use only on disks which do not contain data, such as new disks or disks which are being tested or re-purposed. I was inspired by the ["How To: Hard Drive Burn-In Testing"](https://forums.freenas.org/index.php?threads/how-to-hard-drive-burn-in-testing.21451/) thread on the FreeNAS forum and I want to give full props to the good folks who contributed to that thread. 
                                                                            
 Be aware that:                                                             
                                                                            
@@ -61,5 +61,7 @@ Tested on these drives:
 Requires the smartmontools, available at https://www.smartmontools.org     
                                                                            
 Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
+
+Tested with the static analysis tool at https://www.shellcheck.net to insure that the code is POSIX-compliant and free of issues.
 
 Written by Keith Nash, March 2017.                                                                         
