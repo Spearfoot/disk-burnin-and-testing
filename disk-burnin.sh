@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 ########################################################################
 #
 # disk-burnin.sh
@@ -132,28 +132,20 @@ Host_Name=$(hostname -s)
 
 # Obtain the disk model and serial number:
 
-Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 
 if [ -z "$Disk_Model" ]; then
-  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 fi
 
-Disk_Model=$(tr ' ' '_' <<< "$Disk_Model")
-
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}')
-
-Serial_Number=$(tr ' ' '-' <<< "$Serial_Number")
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
 
 # Form the log and bad blocks data filenames:
 
-Log_File=$(tr ' ' '-' <<< "burnin-${Disk_Model}_${Serial_Number}.log")
-Log_File=$(tr -s '-' <<< "$Log_File")
-Log_File=$(tr -s '_' <<< "$Log_File")
+Log_File="burnin-${Disk_Model}_${Serial_Number}.log"
 Log_File=$Log_Dir/$Log_File
 
-BB_File=$(tr ' ' '-' <<< "burnin-${Disk_Model}_${Serial_Number}.bb")
-BB_File=$(tr -s '-' <<< "$BB_File")
-BB_File=$(tr -s '_' <<< "$BB_File")
+BB_File="burnin-${Disk_Model}_${Serial_Number}.bb"
 BB_File=$BB_Dir/$BB_File
 
 # Query the short and extended test duration, in minutes. Use the values to
@@ -166,7 +158,7 @@ Extended_Test_Minutes=$(smartctl -a /dev/"$Drive" | pcregrep -M "Extended self-t
 # If the extended test duration is short (less than 60 minutes), assume we have
 # an SSD and set the extended test delay the same as the short test delay:
 
-if (( Extended_Test_Minutes < 60 )); then
+if [ "${Extended_Test_Minutes}" -lt 60 ]; then
   Extended_Test_Extra_Delay=$Short_Test_Extra_Delay
 fi
 
@@ -194,7 +186,7 @@ run_short_test()
   push_header
   echo_str "+ Run SMART short test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( Dry_Run == 0 )); then
+  if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t short /dev/"$Drive" | tee -a "$Log_File"
     echo_str "Sleep ${Short_Test_Sleep} seconds until the short test finishes"
     sleep ${Short_Test_Sleep}
@@ -210,7 +202,7 @@ run_extended_test()
   push_header
   echo_str "+ Run SMART extended test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( Dry_Run == 0 )); then
+  if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t long /dev/"$Drive" | tee -a "$Log_File"
     echo_str "Sleep ${Extended_Test_Sleep} seconds until the long test finishes"
     sleep ${Extended_Test_Sleep}
@@ -226,7 +218,7 @@ run_badblocks_test()
   push_header
   echo_str "+ Run badblocks test on drive /dev/${Drive}: $(date)"
   push_header
-  if (( Dry_Run == 0 )); then
+  if [ "${Dry_Run}" -eq 0 ]; then
 #
 #   This is the command which erases all data on the disk:
 #
