@@ -116,6 +116,9 @@
 #   
 #   Fixed code to work around annoying differences between sed's behavior on Linux and
 #   FreeBSD.
+# 
+# KN, 21 May 2017:
+#   Modifed disk model identification and file-naming.
 #
 ########################################################################
 
@@ -146,21 +149,20 @@ BB_Dir="."
 
 # Obtain the disk model and serial number:
 
-Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
+Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5, $6, $7}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
 
 if [ -z "$Disk_Model" ]; then
-  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
+  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5, $6, $7}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
 fi
 
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}')
 
 # Form the log and bad blocks data filenames:
 
-Log_File="burnin-${Disk_Model}_${Serial_Number}.log"
-Log_File=$Log_Dir/$Log_File
+Base_Filename=$(echo "burnin-${Disk_Model}-${Serial_Number}" | tr '[:blank:]' '-' | tr '/' '-')
 
-BB_File="burnin-${Disk_Model}_${Serial_Number}.bb"
-BB_File=$BB_Dir/$BB_File
+Log_File=$Log_Dir/$Base_Filename".log"
+BB_File=$BB_Dir/$Base_Filename".bb"
 
 # Query the short and extended test duration, in minutes. Use the values to
 # caculate how long we should sleep after starting the SMART tests:
