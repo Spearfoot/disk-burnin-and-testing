@@ -116,10 +116,12 @@
 #   
 #   Fixed code to work around annoying differences between sed's behavior on Linux and
 #   FreeBSD.
-# 
-# KN, 21 May 2017:
-#   Modifed disk model identification and file-naming.
 #
+# KN, 8 Jun 2017
+#   Modified parsing of short and extended test durations to accommodate the values
+#   returned by larger drives; we needed to strip out the '(' and ')' characters
+#   surrounding the integer value in order to fetch it reliably.
+# 
 ########################################################################
 
 if [ $# -ne 1 ]; then
@@ -149,27 +151,30 @@ BB_Dir="."
 
 # Obtain the disk model and serial number:
 
-Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5, $6, $7}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 
 if [ -z "$Disk_Model" ]; then
-  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5, $6, $7}' | sed -e 's/^[ \t]*//;s/[ \t]*$//')
+  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 fi
 
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}')
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
 
 # Form the log and bad blocks data filenames:
 
-Base_Filename=$(echo "burnin-${Disk_Model}-${Serial_Number}" | tr '[:blank:]' '-' | tr '/' '-')
+Log_File="burnin-${Disk_Model}_${Serial_Number}.log"
+Log_File=$Log_Dir/$Log_File
 
-Log_File=$Log_Dir/$Base_Filename".log"
-BB_File=$BB_Dir/$Base_Filename".bb"
+BB_File="burnin-${Disk_Model}_${Serial_Number}.bb"
+BB_File=$BB_Dir/$BB_File
 
 # Query the short and extended test duration, in minutes. Use the values to
-# caculate how long we should sleep after starting the SMART tests:
+# calculate how long we should sleep after starting the SMART tests:
 
-Short_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Short self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
+Short_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Short self-test routine.*\n.*recommended polling time:" | sed -e 's/)//;s/(//' | awk '{print $4}' | tr -d '\n')
+#printf "Short_Test_Minutes=[%s]\n" ${Short_Test_Minutes}
 
-Extended_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Extended self-test routine.*\n.*recommended polling time:" | awk '{print $5}' | sed -e 's/)//' | tr -d '\n')
+Extended_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Extended self-test routine.*\n.*recommended polling time:" | sed -e 's/)//;s/(//' | awk '{print $4}' | tr -d '\n')
+#printf "Extended_Test_Minutes=[%s]\n" ${Extended_Test_Minutes}
 
 Short_Test_Sleep=$((Short_Test_Minutes*60))
 Extended_Test_Sleep=$((Extended_Test_Minutes*60))
