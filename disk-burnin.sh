@@ -136,6 +136,12 @@ Options:
 
 --notest
     Needed to actually run the tests, By default $0 will just do a dry run.
+
+--logdir
+    Log files directory
+
+--bbdir
+    Bad blocks files directory
 ...
 "
 
@@ -146,7 +152,7 @@ if [[ $? -ne 4 ]]; then
 fi
 
 SHORT=h
-LONG=help,notest
+LONG=help,notest,logdir:,bbdir:
 
 PARSED=$(getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@")
 if [[ $? -ne 0 ]]; then
@@ -155,6 +161,8 @@ fi
 
 eval set -- "$PARSED"
 
+Log_Dir="."
+BB_Dir="."
 Dry_Run=1
 
 while [ $# -gt 0 ]; do
@@ -162,6 +170,14 @@ while [ $# -gt 0 ]; do
         --notest)
             Dry_Run=0
             exit 0
+            ;;
+        --logdir)
+            Log_Dir="$2"
+            shift
+            ;;
+        --bbdir)
+            BB_Dir="$2"
+            shift
             ;;
         -h | --help)
             echo "$USAGE"
@@ -182,12 +198,6 @@ if [ $# -ne 1 ]; then
 fi
 
 Drive=$1
-
-# Directory specifiers for log and badblocks data files. Leave off the
-# trailing slash:
-
-Log_Dir="."
-BB_Dir="."
 
 ########################################################################
 #
