@@ -169,7 +169,6 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --notest)
             Dry_Run=0
-            exit 0
             ;;
         --logdir)
             Log_Dir="$2"
