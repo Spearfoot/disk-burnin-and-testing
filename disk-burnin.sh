@@ -221,6 +221,19 @@ if echo "${SMART_info}" | grep "Rotation Rate:" | grep -q "Solid State Device"; 
 	driveType="ssd"
 fi
 
+# Test to see if it is necessary to specify connection type:
+
+SMART_deviceType="$(smartctl -d test "/dev/${driveID}")"
+
+if echo "${SMART_deviceType}" | grep -q "Device open changed type"; then
+	if echo "${SMART_deviceType}" | grep -q "[SAT]:"; then
+		driveConnectionType="sat,auto"
+	fi
+else
+	driveConnectionType="auto"
+fi
+
+
 # Form the log and bad blocks data filenames:
 
 Log_File="burnin-${Disk_Model}_${Serial_Number}-$(date -u +%Y%m%d-%H%M+0).log"
@@ -314,7 +327,7 @@ run_short_test() {
 	push_header
 
 	if [ "${Dry_Run}" -eq 0 ]; then
-		smartctl -t short "/dev/${driveID}"
+		smartctl -d "${driveConnectionType}" -t short "/dev/${driveID}"
 
 		echo_str "Short test started, sleeping ${Short_Test_Sleep} seconds until it finishes"
 
@@ -341,7 +354,7 @@ run_conveyance_test() {
 		push_header
 
 		if [ "${Dry_Run}" -eq 0 ]; then
-			smartctl -t conveyance "/dev/${driveID}"
+			smartctl -d "${driveConnectionType}" -t conveyance "/dev/${driveID}"
 
 			echo_str "Conveyance test started, sleeping ${Conveyance_Test_Sleep} seconds until it finishes."
 
@@ -364,7 +377,7 @@ run_extended_test() {
 	push_header
 
 	if [ "${Dry_Run}" -eq 0 ]; then
-		smartctl -t long "/dev/${driveID}"
+		smartctl -d "${driveConnectionType}" -t long "/dev/${driveID}"
 
 		echo_str "Extended test started, sleeping ${Extended_Test_Sleep} seconds until it finishes"
 
