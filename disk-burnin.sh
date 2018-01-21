@@ -203,7 +203,7 @@ SMART_capabilities="$(smartctl -c "/dev/${driveID}")"
 
 SMART_info="$(smartctl -i "/dev/${driveID}")"
 
-# Obtain the disk model and serial number:
+# Obtain the disk model:
 
 Disk_Model="$(echo "${SMART_info}" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's:^[ \t]*::' -e 's:[ \t]*$::' | sed -e 's: :_:')"
 
@@ -211,7 +211,15 @@ if [ -z "$Disk_Model" ]; then
   Disk_Model="$(echo "${SMART_info}" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's:^[ \t]*::' -e 's:[ \t]*$::' | sed -e 's: :_:')"
 fi
 
+# Obtain the disk serial number:
+
 Serial_Number="$(echo "${SMART_info}"  | grep "Serial Number" | awk '{print $3}' | sed -e 's: :_:')"
+
+# Test to see if disk is a SSD:
+
+if echo "${SMART_info}" | grep "Rotation Rate:" | grep -q "Solid State Device"; then
+	driveType="ssd"
+fi
 
 # Form the log and bad blocks data filenames:
 
@@ -227,10 +235,14 @@ BB_File="${BB_Dir}/${BB_File}"
 Short_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Short self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
 #printf "Short_Test_Minutes=[%s]\n" ${Short_Test_Minutes}
 
+Conveyance_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Conveyance self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
+#printf "Conveyance_Test_Minutes=[%s]\n" ${Conveyance_Test_Minutes}
+
 Extended_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Extended self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
 #printf "Extended_Test_Minutes=[%s]\n" ${Extended_Test_Minutes}
 
 Short_Test_Sleep="$((Short_Test_Minutes*60))"
+Conveyance_Test_Sleep="$((Conveyance_Test_Minutes*60))"
 Extended_Test_Sleep="$((Extended_Test_Minutes*60))"
 
 # Selftest polling timeout interval, in hours
@@ -318,6 +330,34 @@ run_short_test() {
 	echo_str "Finished SMART short test on drive /dev/${driveID}: $(date)"
 }
 
+run_conveyance_test() {
+	if [ -z "${Conveyance_Test_Minutes}" ]; then
+		push_header
+		echo_str "+ SMART conveyance test not supported by /dev/${driveID}; skipping."
+		push_header
+	eles
+		push_header
+		echo_str "+ Run SMART conveyance test on drive /dev/${driveID}: $(date)."
+		push_header
+
+		if [ "${Dry_Run}" -eq 0 ]; then
+			smartctl -t conveyance "/dev/${driveID}"
+
+			echo_str "Conveyance test started, sleeping ${Conveyance_Test_Sleep} seconds until it finishes."
+
+			sleep "${Conveyance_Test_Sleep}"
+
+			poll_selftest_complete
+
+			smartctl -l selftest "/dev/${driveID}" | tee -a "$Log_File"
+		else
+			echo_str "Dry run: would start the SMART conveyance test and sleep ${Conveyance_Test_Sleep} seconds until the test finishes."
+		fi
+
+		echo_str "Finished SMART conveyance test on drive /dev/${driveID}: $(date)."
+	fi
+}
+
 run_extended_test() {
 	push_header
 	echo_str "+ Run SMART extended test on drive /dev/${driveID}: $(date)"
@@ -384,10 +424,13 @@ EOF
 
 # Run the test sequence:
 run_short_test
+run_conveyance_test
 run_extended_test
-run_badblocks_test
-run_short_test
-run_extended_test
+if [ ! "${driveType}" = "ssd" ]; then
+	run_badblocks_test
+	run_short_test
+	run_extended_test
+fi
 
 # Emit full device information to log:
 tee -a "$Log_File" << EOF
