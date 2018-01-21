@@ -184,7 +184,7 @@ while getopts ":d:l:b:th" OPTION; do
 	esac
 done
 
-if [ ! -z "${driveID}" ]; then
+if [ -z "${driveID}" ]; then
 	echo "error: No Drive Device Specifier." 1>&2
 	dbUsage
 	exit 4
@@ -245,13 +245,13 @@ BB_File="${BB_Dir}/${BB_File}"
 # Query the short and extended test duration, in minutes. Use the values to
 # calculate how long we should sleep after starting the SMART tests:
 
-Short_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Short self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
+Short_Test_Minutes="$(echo "${SMART_capabilities}" | pcregrep -M 'Short self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')"
 #printf "Short_Test_Minutes=[%s]\n" ${Short_Test_Minutes}
 
-Conveyance_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Conveyance self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
+Conveyance_Test_Minutes="$(echo "${SMART_capabilities}" | pcregrep -M 'Conveyance self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')"
 #printf "Conveyance_Test_Minutes=[%s]\n" ${Conveyance_Test_Minutes}
 
-Extended_Test_Minutes=$(echo "${SMART_capabilities}" | pcregrep -M 'Extended self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')
+Extended_Test_Minutes="$(echo "${SMART_capabilities}" | pcregrep -M 'Extended self-test routine.*\n.*recommended polling time:' | sed -e 's:)::' -e 's:(::' | awk '{print $4}' | tr -d '\n')"
 #printf "Extended_Test_Minutes=[%s]\n" ${Extended_Test_Minutes}
 
 Short_Test_Sleep="$((Short_Test_Minutes*60))"
@@ -348,7 +348,7 @@ run_conveyance_test() {
 		push_header
 		echo_str "+ SMART conveyance test not supported by /dev/${driveID}; skipping."
 		push_header
-	eles
+	else
 		push_header
 		echo_str "+ Run SMART conveyance test on drive /dev/${driveID}: $(date)."
 		push_header
@@ -429,6 +429,8 @@ Drive Model: ${Disk_Model}
 Serial Number: ${Serial_Number}
 Short test duration: ${Short_Test_Minutes} minutes
 Short test sleep duration: ${Short_Test_Sleep} seconds
+Conveyance test duration: ${Conveyance_Test_Minutes} minutes
+Conveyance test sleep duration: ${Conveyance_Test_Sleep} seconds
 Extended test duration: ${Extended_Test_Minutes} minutes
 Extended test sleep duration: ${Extended_Test_Sleep} seconds
 Log file: ${Log_File}
