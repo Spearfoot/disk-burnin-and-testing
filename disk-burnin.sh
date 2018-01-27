@@ -190,7 +190,13 @@ if [ -z "${driveID}" ]; then
 	exit 4
 fi
 
-
+#check if needed software is installed
+for command in grep pcregrep awk sed tr sleep badblocks; do
+	if ! type "${command}" &> /dev/null; then
+		echo "${command} is missing, please install"
+		exit 100
+	fi
+done
 
 ######################################################################
 #
@@ -477,4 +483,3 @@ if [ "${osflavor}" = "FreeBSD" ]; then
 	sed -i '' -e '/Vendor Specific SMART/d' "${Log_File}"
 	sed -i '' -e '/SMART Error Log Version/d' "${Log_File}"
 fi
-
