@@ -188,6 +188,9 @@ if [ -z "${driveID}" ]; then
 	echo "error: No Drive Device Specifier." 1>&2
 	dbUsage
 	exit 4
+elif [ ! -e "/dev/${driveID}" ]; then
+	echo "error: Drive Device Specifier does not exist." 1>&2
+	exit 4
 fi
 
 #check if needed software is installed
