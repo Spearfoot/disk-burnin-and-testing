@@ -194,7 +194,16 @@ elif [ ! -e "/dev/${driveID}" ]; then
 fi
 
 #check if needed software is installed
-for command in grep pcregrep awk sed tr sleep badblocks; do
+commands=(
+grep
+pcregrep
+awk
+sed
+tr
+sleep
+badblocks
+)
+for command in "${commands[@]}"; do
 	if ! type "${command}" &> /dev/null; then
 		echo "${command} is missing, please install"
 		exit 100
