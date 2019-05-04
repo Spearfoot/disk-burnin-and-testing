@@ -47,8 +47,10 @@ Before using the script on FreeBSD systems (including FreeNAS) you must first ex
 `sysctl kern.geom.debugflags=0x10`
                                                                            
 Tested under:                                                              
-* FreeNAS 9.10.2-U1 (FreeBSD 10.3-STABLE)                                     
-* Ubuntu Server 16.04.2 LTS                                                
+* FreeNAS 9.10.2-U1 (FreeBSD 10.3-STABLE)
+* FreeNAS 11.1-U7 (FreeBSD 11.1-STABLE)
+* Ubuntu Server 16.04.2 LTS            
+* CentOS 7.0
                                                                            
 Tested on these drives: 
 * Intel DC S3700 SSD
