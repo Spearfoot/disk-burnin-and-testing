@@ -40,7 +40,7 @@ The only required command-line argument is the device specifier, e.g.:
                                                                            
 ...will run the burn-in test on device /dev/sda
                                                                            
-You can run the script in 'dry run mode' to check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. The script is distributed with 'dry runs' enabled, so you will need to edit the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.                                                           
+The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __You will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
 
 Before using the script on FreeBSD systems (including FreeNAS) you must first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
@@ -66,4 +66,5 @@ Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
 
 Tested with the static analysis tool at https://www.shellcheck.net to insure that the code is POSIX-compliant and free of issues.
 
-Written by Keith Nash, March 2017.                                                                         
+Written by Keith Nash, March 2017.
+Modified on 15 December 2019.
