@@ -5,7 +5,7 @@ Be aware that:
                                                                            
 * This script runs the `badblocks` program in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing data you value!__
 * Run times for large disks can take several days to complete, so it is a good idea to use tmux sessions to prevent mishaps.               
-* Must be run as 'root', so either log on as root or use the `sudo` command (e.g., `sudo ./disk_burnin.sh daX`                                             
+* Must be run as 'root', so either log on using the root account or use the `sudo` command (e.g., `sudo ./disk_burnin.sh sda`                                             
                                                                            
 Performs these steps:                                                      
                                                                            
@@ -41,6 +41,8 @@ The only required command-line argument is the device specifier, e.g.:
 ...will run the burn-in test on device /dev/sda
                                                                            
 The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __You will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
+
+Some users with atypical hardware environments may need to modify the script and specify the `smartctl` command device type explictly with the `-d` option. User reported success using `-d sat` with a Western Digital MyBook external USB enclosure.
 
 Before using the script on FreeBSD systems (including FreeNAS) you must first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
