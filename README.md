@@ -5,7 +5,7 @@ Be aware that:
                                                                            
 * This script runs the `badblocks` program in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing data you value!__
 * Run times for large disks can take several days to complete, so it is a good idea to use tmux sessions to prevent mishaps.               
-* Must be run as 'root'.                                                
+* Must be run as 'root', so either log on as root or use the `sudo` command (e.g., `sudo ./disk_burnin.sh daX`                                             
                                                                            
 Performs these steps:                                                      
                                                                            
