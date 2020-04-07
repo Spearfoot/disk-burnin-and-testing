@@ -16,7 +16,7 @@ Performs these steps:
 4. Run SMART short test                                                  
 5. Run SMART extended test                                               
 
-I often skip the second step ("2. Run SMART extended test"); you can do the same by deleting or commenting out that line in the script. 
+I often skip the second step ("2. Run SMART extended test"); you can do the same by deleting or commenting out the call to ``run_extended_test`` at line 324 in the script. 
 
 The script sleeps after starting each SMART test, using a duration based on the polling interval reported by the disk, and adding an additional delay to account for discrepancies.               
                                                                            
