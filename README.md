@@ -4,7 +4,8 @@
 Be aware that:                                                             
                                                                            
 * This script runs the `badblocks` program in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing data you value!__
-* Run times for large disks can take several days to complete, so it is a good idea to use tmux sessions to prevent mishaps.               
+* You will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives (see details below).  
+* Run times for large disks can take several days to a week or more to complete, so it is a good idea to use tmux sessions to prevent mishaps.               
 * Must be run as 'root', so either log on using the root account or use the `sudo` command, for example: `sudo ./disk_burnin.sh sda`                                          
                                                                            
 Performs these steps:                                                      
@@ -14,7 +15,9 @@ Performs these steps:
 3. Run `badblocks`                                                         
 4. Run SMART short test                                                  
 5. Run SMART extended test                                               
-                                                                           
+
+I often skip the second step ("2. Run SMART extended test"); you can do the same by deleting or commenting out that line in the script. 
+
 The script sleeps after starting each SMART test, using a duration based on the polling interval reported by the disk, and adding an additional delay to account for discrepancies.               
                                                                            
 Full SMART information is pulled after each SMART test. All output except for the sleep command is echoed to both the screen and log file.    
@@ -40,7 +43,7 @@ The only required command-line argument is the device specifier, e.g.:
                                                                            
 ...will run the burn-in test on device /dev/sda
                                                                            
-The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __You will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
+__IMPORTANT:__ The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __Again, you will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
 
 Some users with atypical hardware environments may need to modify the script and specify the `smartctl` command device type explictly with the `-d` option. User __bcmryan__ reports success using `-d sat` with a Western Digital MyBook 8TB external drive enclosure.
 
