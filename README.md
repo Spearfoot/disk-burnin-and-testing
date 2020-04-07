@@ -72,4 +72,4 @@ Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
 Tested with the static analysis tool at https://www.shellcheck.net to insure that the code is POSIX-compliant and free of issues.
 
 Written by Keith Nash, March 2017.
-Modified on 15 December 2019.
+Modified on 7 April 2020.
