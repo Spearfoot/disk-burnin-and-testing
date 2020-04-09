@@ -157,7 +157,7 @@ if [ -z "$Disk_Model" ]; then
   Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 fi
 
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep --ignore-case "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
 
 # Form the log and bad blocks data filenames:
 
