@@ -134,6 +134,8 @@
 #
 ########################################################################
 
+# tmux new -d -n da* /mnt/jails/scripts/disk-burnin.sh -td da*
+
 dbUsage() {
 	tee >&2 << EOF
 Usage: ${0} [-h] [-t] [-l directory] [-b directory] -d drive-device-specifier
@@ -420,9 +422,9 @@ run_badblocks_test() {
 		#
 		# This is the command which erases all data on the disk:
 		#
-		badblocks -b 4096 -wsv -o "$BB_File" "/dev/${driveID}"
+		badblocks -b 4096 -c 512 -wsv -o "$BB_File" "/dev/${driveID}"
 	else
-		echo_str "Dry run: would run badblocks -b 4096 -wsv -o ${BB_File} /dev/${driveID}"
+		echo_str "Dry run: would run badblocks -b 512 -c 4096 -wsv -o ${BB_File} /dev/${driveID}"
 	fi
 
 	echo_str "Finished badblocks test on drive /dev/${driveID}: $(date)"
