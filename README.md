@@ -43,28 +43,32 @@ The only required command-line argument is the device specifier, e.g.:
                                                                            
 ...will run the burn-in test on device /dev/sda
                                                                            
-__IMPORTANT:__ The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __Again, you will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
+__IMPORTANT: Dry Run is the default__
+The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __Again, you will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
 
 Some users with atypical hardware environments may need to modify the script and specify the `smartctl` command device type explictly with the `-d` option. User __bcmryan__ reports success using `-d sat` with a Western Digital MyBook 8TB external drive enclosure.
 
-Before using the script on FreeBSD systems (including FreeNAS) you must first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
+__FREEBSD/FREENAS NOTES:__
+Before using the script on FreeBSD systems (including FreeNAS) you should first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
 `sysctl kern.geom.debugflags=0x10`
-                                                                           
+
+Also note that `badblocks` may issue the following warning under FreeBSD/FreeNAS, which can safely be ignored as it has no effect on testing:
+
+`set_o_direct: Inappropiate ioctl for device`
+
+__OPERATING SYSTEMS__
 Tested under:                                                              
 * FreeNAS 9.10.2-U1 (FreeBSD 10.3-STABLE)
 * FreeNAS 11.1-U7 (FreeBSD 11.1-STABLE)
 * FreeNAS 11.2-U8 (FreeBSD 11.2-STABLE)
 * Ubuntu Server 16.04.2 LTS            
 * CentOS 7.0
-                                                                           
-Tested on these drives: 
-* Intel DC S3700 SSD
-* Intel Model 320 Series SSD
-* HGST Deskstar NAS (HDN724040ALE640)
-* Hitachi/HGST Ultrastar 7K4000 (HUS724020ALE640)
-* Western Digital Re (WD4000FYYZ)
-* Western Digital Black (WD6001FZWX)
+
+__DRIVE MODELS__
+The script should run successfully on any SATA disk support SMART. It has been tested on these drives: 
+* HGST Deskstar NAS, UltraStar, UltraStar He10, and UltraStar He12 models
+* Western Digital Gold, Black, and Re models
                                                                            
 Requires the smartmontools, available at https://www.smartmontools.org     
                                                                            
@@ -73,4 +77,4 @@ Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
 Tested with the static analysis tool at https://www.shellcheck.net to insure that the code is POSIX-compliant and free of issues.
 
 Written by Keith Nash, March 2017.
-Modified on 7 April 2020.
+Modified on 20 June 2020.
