@@ -70,7 +70,7 @@ Tested under:
 
 __DRIVE MODELS__
 
-The script should run successfully on any SATA disk with SMART capabilities, which inludes just about all modern drives. It has been tested on these particular devices: 
+The script should run successfully on any SATA disk with SMART capabilities, which includes just about all modern drives. It has been tested on these particular devices: 
 * HGST Deskstar NAS, UltraStar, UltraStar He10, and UltraStar He12 models
 * Western Digital Gold, Black, and Re models
                                                                            
