@@ -44,11 +44,13 @@ The only required command-line argument is the device specifier, e.g.:
 ...will run the burn-in test on device /dev/sda
                                                                            
 __IMPORTANT: Dry Run is the default__
+
 The script is distributed with 'dry run mode' enabled. This lets you check the sleep duration calculations and to insure that the sequence of commands suits your needs. In 'dry runs' the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs. __Again, you will need to edit the script and change the `Dry_Run` variable, setting it to 0, in order to actually perform tests on drives.__                                                           
 
 Some users with atypical hardware environments may need to modify the script and specify the `smartctl` command device type explictly with the `-d` option. User __bcmryan__ reports success using `-d sat` with a Western Digital MyBook 8TB external drive enclosure.
 
 __FREEBSD/FREENAS NOTES:__
+
 Before using the script on FreeBSD systems (including FreeNAS) you should first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
 `sysctl kern.geom.debugflags=0x10`
@@ -58,6 +60,7 @@ Also note that `badblocks` may issue the following warning under FreeBSD/FreeNAS
 `set_o_direct: Inappropiate ioctl for device`
 
 __OPERATING SYSTEMS__
+
 Tested under:                                                              
 * FreeNAS 9.10.2-U1 (FreeBSD 10.3-STABLE)
 * FreeNAS 11.1-U7 (FreeBSD 11.1-STABLE)
@@ -66,7 +69,8 @@ Tested under:
 * CentOS 7.0
 
 __DRIVE MODELS__
-The script should run successfully on any SATA disk support SMART. It has been tested on these drives: 
+
+The script should run successfully on any SATA disk with SMART capabilitie, which inludes just about all modern drives. It has been tested on these drives: 
 * HGST Deskstar NAS, UltraStar, UltraStar He10, and UltraStar He12 models
 * Western Digital Gold, Black, and Re models
                                                                            
