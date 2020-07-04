@@ -233,7 +233,7 @@ fi
 
 # Obtain the disk serial number:
 
-Serial_Number="$(echo "${SMART_info}"  | grep "Serial Number" | awk '{print $3}' | sed -e 's: :_:')"
+Serial_Number="$(echo "${SMART_info}"  | grep --ignore-case "Serial Number" | awk '{print $3}' | sed -e 's: :_:')"
 
 # Test to see if disk is a SSD:
 
