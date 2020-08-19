@@ -20,7 +20,7 @@ The script calls `sleep` after starting each SMART test, using a duration based 
 
 Full SMART information is pulled after each SMART test. All output except for the `sleep` command is echoed to both the screen and log file.    
                                                                            
-You should periodically monitor the burn-in progress and check for errors, particularly any errors reported by badblocks, or these SMART errors:                   
+You should periodically monitor the burn-in progress and check for errors, particularly any errors reported by `badblocks`, or these SMART errors:                   
   
 |ID|Attribute Name|
 |---:|---|
