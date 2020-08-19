@@ -148,8 +148,8 @@ Dry_Run=0
 # trailing slash if you specify a value. Default is the current working
 # directory.
 
-Log_Dir=`pwd`
-BB_Dir=`pwd`
+Log_Dir=$(pwd)
+BB_Dir=$(pwd)
 
 # Alternative:
 #Log_Dir="."
