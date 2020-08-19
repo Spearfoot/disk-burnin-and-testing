@@ -27,10 +27,8 @@
 # Performs these steps:
 #
 #   1> Run SMART short test
-#   2> Run SMART extended test
-#   3> Run badblocks
-#   4> Run SMART short test
-#   5> Run SMART extended test
+#   2> Run badblocks
+#   3> Run SMART extended test
 #
 # The script sleeps after starting each SMART test, using a duration 
 # based on the polling interval reported by the disk, after which the
@@ -121,6 +119,15 @@
 #   Modified parsing of short and extended test durations to accommodate the values
 #   returned by larger drives; we needed to strip out the '(' and ')' characters
 #   surrounding the integer value in order to fetch it reliably.
+#
+# KN, 19 Aug 2020
+#	Changed Dry_Run value so that dry runs are no longer the default setting.
+#	Changed badblocks call to exit immediately on first error.
+#	Set logging directoryto current working directory using pwd command.
+#	Reduced default tests so that we run:
+#		1> Short SMART test
+#		2> badblocks
+#		3> Extended SMART test
 # 
 ########################################################################
 
@@ -133,15 +140,20 @@ fi
 Drive=$1
 
 # Set Dry_Run to a non-zero value to test out the script without actually
-# running any tests: set it to zero when you are ready to burn-in disks.
+# running any tests; leave it set to zero to burn-in disks.
 
-Dry_Run=1
+Dry_Run=0
 
 # Directory specifiers for log and badblocks data files. Leave off the 
-# trailing slash:
+# trailing slash if you specify a value. Default is the current working
+# directory.
 
-Log_Dir="."
-BB_Dir="."
+Log_Dir=`pwd`
+BB_Dir=`pwd`
+
+# Alternative:
+#Log_Dir="."
+#BB_Dir="."
 
 ########################################################################
 #
@@ -157,7 +169,7 @@ if [ -z "$Disk_Model" ]; then
   Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
 fi
 
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep --ignore-case "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
+Serial_Number=$(smartctl -i /dev/"$Drive" | grep -i "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
 
 # Form the log and bad blocks data filenames:
 
@@ -288,9 +300,9 @@ run_badblocks_test()
 #
 #   This is the command which erases all data on the disk:
 #
-    badblocks -b 4096 -wsv -o "$BB_File" /dev/"$Drive"
+    badblocks -b 4096 -wsv -e 1 -o "$BB_File" /dev/"$Drive"
   else
-    echo_str "Dry run: would run badblocks -b 4096 -wsv -o ${BB_File} /dev/${Drive}"
+    echo_str "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${Drive}"
   fi
   echo_str "Finished badblocks test on drive /dev/${Drive}: $(date)"
 }
@@ -321,16 +333,16 @@ echo_str "Bad blocks file: ${BB_File}"
 
 # Run the test sequence:
 run_short_test
-run_extended_test
+#run_extended_test
 run_badblocks_test
-run_short_test
+#run_short_test
 run_extended_test
 
 # Emit full device information to log:
 push_header
 echo_str "+ SMART information for drive /dev/${Drive}: $(date)"
 push_header
-smartctl -x /dev/"$Drive" | tee -a "$Log_File"
+smartctl -x -v 7,hex48 /dev/"$Drive" | tee -a "$Log_File"
 
 push_header
 echo_str "+ Finished burn-in of /dev/${Drive} : $(date)"
