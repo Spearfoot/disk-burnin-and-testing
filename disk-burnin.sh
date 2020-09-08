@@ -131,6 +131,16 @@
 #
 ########################################################################
 
+# Check required dependencies
+readonly DEPENDENCIES="awk badblocks grep sed sleep"
+for dependency in ${DEPENDENCIES}; do
+  if ! command -v "${dependency}" > /dev/null 2>&1 ; then
+    echo "Command '${dependency}' not found. Exiting ..."
+    exit 2
+  fi
+done
+
+# Check script arguments
 if [ $# -ne 1 ]; then
   echo "Error: not enough arguments!"
   echo "Usage is: $0 drive_device_specifier"
