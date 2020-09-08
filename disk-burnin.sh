@@ -225,23 +225,23 @@ get_smart_test_duration() {
     | awk '/'"$1"' self-test routine/{getline; gsub(/\(|\)/, ""); printf $4}'
 }
 
+# The script initially sleeps for a duration after a test is started.
+# Afterwards the completion status is repeatedly polled.
+
+# SMART short test duration
 Short_Test_Minutes="$(get_smart_test_duration "Short")"
-#printf "Short_Test_Minutes=[%s]\n" ${Short_Test_Minutes}
+Short_Test_Seconds="$(( Short_Test_Minutes * 60))"
 
+# SMART extended test duration
 Extended_Test_Minutes="$(get_smart_test_duration "Extended")"
-#printf "Extended_Test_Minutes=[%s]\n" ${Extended_Test_Minutes}
+Extended_Test_Seconds="$(( Extended_Test_Minutes * 60 ))"
 
-Short_Test_Sleep=$((Short_Test_Minutes*60))
-Extended_Test_Sleep=$((Extended_Test_Minutes*60))
-
-# Selftest polling timeout interval, in hours
+# Maximum duration the completion status is polled
 Poll_Timeout_Hours=4
+Poll_Timeout_Seconds="$(( Poll_Timeout_Hours * 60 * 60))"
 
-# Calculate the selftest polling timeout interval in seconds
-Poll_Timeout=$((Poll_Timeout_Hours*60*60))
-
-# Polling sleep interval, in seconds:
-Poll_Interval=15
+# Sleep interval between completion status polls
+Poll_Interval_Seconds=15
 
 ########################################################################
 #
@@ -286,12 +286,12 @@ poll_selftest_complete()
         l_rv=0
         l_done=1
       else
-        if [ $l_pollduration -ge "${Poll_Timeout}" ]; then
+        if [ $l_pollduration -ge "${Poll_Timeout_Seconds}" ]; then
           echo_str "Timeout polling for SMART self-test status"
           l_done=1
         else
-          sleep ${Poll_Interval}
-          l_pollduration=$((l_pollduration+Poll_Interval))
+          sleep ${Poll_Interval_Seconds}
+          l_pollduration=$((l_pollduration+Poll_Interval_Seconds))
         fi
       fi
     fi
@@ -307,12 +307,12 @@ run_short_test()
   push_header
   if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t short /dev/"$Drive"
-    echo_str "Short test started, sleeping ${Short_Test_Sleep} seconds until it finishes"
-    sleep ${Short_Test_Sleep}
+    echo_str "Short test started, sleeping ${Short_Test_Seconds} seconds until it finishes"
+    sleep ${Short_Test_Seconds}
     poll_selftest_complete
     smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
   else
-    echo_str "Dry run: would start the SMART short test and sleep ${Short_Test_Sleep} seconds until the test finishes"
+    echo_str "Dry run: would start the SMART short test and sleep ${Short_Test_Seconds} seconds until the test finishes"
   fi
   echo_str "Finished SMART short test on drive /dev/${Drive}: $(date)"
 }
@@ -324,12 +324,12 @@ run_extended_test()
   push_header
   if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t long /dev/"$Drive"
-    echo_str "Extended test started, sleeping ${Extended_Test_Sleep} seconds until it finishes"
-    sleep ${Extended_Test_Sleep}
+    echo_str "Extended test started, sleeping ${Extended_Test_Seconds} seconds until it finishes"
+    sleep ${Extended_Test_Seconds}
     poll_selftest_complete
     smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
   else
-    echo_str "Dry run: would start the SMART extended test and sleep ${Extended_Test_Sleep} seconds until the test finishes"
+    echo_str "Dry run: would start the SMART extended test and sleep ${Extended_Test_Seconds} seconds until the test finishes"
   fi
   echo_str "Finished SMART extended test on drive /dev/${Drive}: $(date)"
 }
@@ -368,9 +368,9 @@ echo_str "Host: $(hostname)"
 echo_str "Drive Model: ${Disk_Model}"
 echo_str "Serial Number: ${Serial_Number}"
 echo_str "Short test duration: ${Short_Test_Minutes} minutes"
-echo_str "Short test sleep duration: ${Short_Test_Sleep} seconds"
+echo_str "Short test sleep duration: ${Short_Test_Seconds} seconds"
 echo_str "Extended test duration: ${Extended_Test_Minutes} minutes"
-echo_str "Extended test sleep duration: ${Extended_Test_Sleep} seconds"
+echo_str "Extended test sleep duration: ${Extended_Test_Seconds} seconds"
 echo_str "Log file: ${Log_File}"
 echo_str "Bad blocks file: ${BB_File}"
 
