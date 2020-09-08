@@ -259,45 +259,39 @@ push_header()
   echo_str "+-----------------------------------------------------------------------------"
 }
 
+##################################################
+# Poll repeatedly whether SMART self-test has completed.
+# Globals:
+#   Drive
+#   Poll_Interval_Seconds
+#   Poll_Timeout_Seconds
+# Arguments:
+#   None
+# Returns:
+#   0 if success or failure.
+#   1 if timeout threshold exceeded.
+##################################################
 poll_selftest_complete()
 {
-  l_rv=1
-  l_status=0
-  l_done=0
-  l_pollduration=0
-
-# Check SMART results for "The previous self-test routine completed"
-# Return 0 if the test has completed, 1 if we exceed our polling timeout interval
-
-  while [ $l_done -eq 0 ];
-  do
-    smartctl -a /dev/"$Drive" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
+  l_poll_duration_seconds=0
+  while [ "${l_poll_duration_seconds}" -lt "${Poll_Timeout_Seconds}" ]; do
+    smartctl --all "/dev/${Drive}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
     l_status=$?
-    if [ $l_status -eq 0 ]; then
-      echo_str "SMART self-test complete"
-      l_rv=0
-      l_done=1
-    else
-      # Check for failure
-      smartctl -a /dev/"$Drive" | grep -i "of the test failed." > /dev/null 2<&1
-      l_status=$?
-      if [ $l_status -eq 0 ]; then
-        echo_str "SMART self-test failed"
-        l_rv=0
-        l_done=1
-      else
-        if [ $l_pollduration -ge "${Poll_Timeout_Seconds}" ]; then
-          echo_str "Timeout polling for SMART self-test status"
-          l_done=1
-        else
-          sleep ${Poll_Interval_Seconds}
-          l_pollduration=$((l_pollduration+Poll_Interval_Seconds))
-        fi
-      fi
+    if [ "${l_status}" -eq 0 ]; then
+      echo_str "SMART self-test succeeded"
+      return 0
     fi
+    smartctl --all "/dev/${Drive}" | grep -i "of the test failed." > /dev/null 2<&1
+    l_status=$?
+    if [ "${l_status}" -eq 0 ]; then
+      echo_str "SMART self-test failed"
+      return 0
+    fi
+    sleep "${Poll_Interval_Seconds}"
+    l_poll_duration_seconds="$(( l_poll_duration_seconds + Poll_Interval_Seconds ))"
   done
-
-  return $l_rv
+  echo_str "SMART self-test timeout threshold exceeded"
+  return 1
 }
 
 run_short_test()
