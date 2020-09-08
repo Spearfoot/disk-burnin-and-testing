@@ -140,6 +140,12 @@ for dependency in ${DEPENDENCIES}; do
   fi
 done
 
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run as root. Exiting ..."
+  exit 2
+fi
+
 # Check script arguments
 if [ $# -ne 1 ]; then
   echo "Error: not enough arguments!"
