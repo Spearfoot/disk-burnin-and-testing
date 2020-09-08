@@ -259,14 +259,31 @@ Poll_Interval_Seconds=15
 #
 ########################################################################
 
-echo_str()
+##################################################
+# Log informational message.
+# Globals:
+#   Log_File
+# Arguments:
+#   Message to log.
+# Outputs:
+#   Write message to stdout and log file.
+##################################################
+log_info()
 {
-  echo "$1" | tee -a "$Log_File"
+  now="$(date +"%F %T %Z")"
+  printf "%s\n" "[${now}] $1" | tee -a "${Log_File}"
 }
 
-push_header()
+##################################################
+# Log emphasized header message.
+# Arguments:
+#   Message to log.
+##################################################
+log_header()
 {
-  echo_str "+-----------------------------------------------------------------------------"
+  log_info "+-----------------------------------------------------------------------------"
+  log_info "+ $1"
+  log_info "+-----------------------------------------------------------------------------"
 }
 
 ##################################################
@@ -288,70 +305,64 @@ poll_selftest_complete()
     smartctl --all "/dev/${Drive}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
     l_status=$?
     if [ "${l_status}" -eq 0 ]; then
-      echo_str "SMART self-test succeeded"
+      log_info "SMART self-test succeeded"
       return 0
     fi
     smartctl --all "/dev/${Drive}" | grep -i "of the test failed." > /dev/null 2<&1
     l_status=$?
     if [ "${l_status}" -eq 0 ]; then
-      echo_str "SMART self-test failed"
+      log_info "SMART self-test failed"
       return 0
     fi
     sleep "${Poll_Interval_Seconds}"
     l_poll_duration_seconds="$(( l_poll_duration_seconds + Poll_Interval_Seconds ))"
   done
-  echo_str "SMART self-test timeout threshold exceeded"
+  log_info "SMART self-test timeout threshold exceeded"
   return 1
 }
 
 run_short_test()
 {
-  push_header
-  echo_str "+ Run SMART short test on drive /dev/${Drive}: $(date)"
-  push_header
+  log_header "Run SMART short test on drive /dev/${Drive}"
   if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t short /dev/"$Drive"
-    echo_str "Short test started, sleeping ${Short_Test_Seconds} seconds until it finishes"
+    log_info "Short test started, sleeping ${Short_Test_Seconds} seconds until it finishes"
     sleep ${Short_Test_Seconds}
     poll_selftest_complete
     smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
   else
-    echo_str "Dry run: would start the SMART short test and sleep ${Short_Test_Seconds} seconds until the test finishes"
+    log_info "Dry run: would start the SMART short test and sleep ${Short_Test_Seconds} seconds until the test finishes"
   fi
-  echo_str "Finished SMART short test on drive /dev/${Drive}: $(date)"
+  log_info "Finished SMART short test on drive /dev/${Drive}: $(date)"
 }
 
 run_extended_test()
 {
-  push_header
-  echo_str "+ Run SMART extended test on drive /dev/${Drive}: $(date)"
-  push_header
+  log_header "Run SMART extended test on drive /dev/${Drive}"
   if [ "${Dry_Run}" -eq 0 ]; then
     smartctl -t long /dev/"$Drive"
-    echo_str "Extended test started, sleeping ${Extended_Test_Seconds} seconds until it finishes"
+    log_info "Extended test started, sleeping ${Extended_Test_Seconds} seconds until it finishes"
     sleep ${Extended_Test_Seconds}
     poll_selftest_complete
     smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
   else
-    echo_str "Dry run: would start the SMART extended test and sleep ${Extended_Test_Seconds} seconds until the test finishes"
+    log_info "Dry run: would start the SMART extended test and sleep ${Extended_Test_Seconds} seconds until the test finishes"
   fi
-  echo_str "Finished SMART extended test on drive /dev/${Drive}: $(date)"
+  log_info "Finished SMART extended test on drive /dev/${Drive}: $(date)"
 }
 
 run_badblocks_test()
 {
-  push_header
-  echo_str "+ Run badblocks test on drive /dev/${Drive}: $(date)"
-  push_header
+  log_header "Run badblocks test on drive /dev/${Drive}"
   if [ "${Dry_Run}" -eq 0 ]; then
 #
 #   This is the command which erases all data on the disk:
 #
     badblocks -b 4096 -wsv -e 1 -o "$BB_File" /dev/"$Drive"
   else
-    echo_str "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${Drive}"
+    log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${Drive}"
   fi
-  echo_str "Finished badblocks test on drive /dev/${Drive}: $(date)"
+  log_info "Finished badblocks test on drive /dev/${Drive}: $(date)"
 }
 
 ########################################################################
@@ -364,19 +375,17 @@ if [ -e "$Log_File" ]; then
   rm "$Log_File"
 fi
 
-push_header
-echo_str "+ Started burn-in of /dev/${Drive} : $(date)"
-push_header
+log_header "Started burn-in of /dev/${Drive}"
 
-echo_str "Host: $(hostname)"
-echo_str "Drive Model: ${Disk_Model}"
-echo_str "Serial Number: ${Serial_Number}"
-echo_str "Short test duration: ${Short_Test_Minutes} minutes"
-echo_str "Short test sleep duration: ${Short_Test_Seconds} seconds"
-echo_str "Extended test duration: ${Extended_Test_Minutes} minutes"
-echo_str "Extended test sleep duration: ${Extended_Test_Seconds} seconds"
-echo_str "Log file: ${Log_File}"
-echo_str "Bad blocks file: ${BB_File}"
+log_info "Host: $(hostname)"
+log_info "Drive Model: ${Disk_Model}"
+log_info "Serial Number: ${Serial_Number}"
+log_info "Short test duration: ${Short_Test_Minutes} minutes"
+log_info "Short test sleep duration: ${Short_Test_Seconds} seconds"
+log_info "Extended test duration: ${Extended_Test_Minutes} minutes"
+log_info "Extended test sleep duration: ${Extended_Test_Seconds} seconds"
+log_info "Log file: ${Log_File}"
+log_info "Bad blocks file: ${BB_File}"
 
 # Run the test sequence:
 run_short_test
@@ -386,14 +395,10 @@ run_badblocks_test
 run_extended_test
 
 # Emit full device information to log:
-push_header
-echo_str "+ SMART information for drive /dev/${Drive}: $(date)"
-push_header
+log_header "SMART information for drive /dev/${Drive}"
 smartctl -x -v 7,hex48 /dev/"$Drive" | tee -a "$Log_File"
 
-push_header
-echo_str "+ Finished burn-in of /dev/${Drive} : $(date)"
-push_header
+log_header "Finished burn-in of /dev/${Drive}"
 
 # Clean up the log file:
 
