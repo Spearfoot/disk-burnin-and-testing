@@ -135,43 +135,80 @@
 readonly DEPENDENCIES="awk badblocks grep sed sleep"
 for dependency in ${DEPENDENCIES}; do
   if ! command -v "${dependency}" > /dev/null 2>&1 ; then
-    echo "Command '${dependency}' not found. Exiting ..."
+    echo "Command '${dependency}' not found" >&2
     exit 2
   fi
 done
 
 # Check if running as root
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run as root. Exiting ..."
+  echo "Please run as root" >&2
   exit 2
 fi
 
-# Check script arguments
-if [ $# -ne 1 ]; then
-  echo "Error: not enough arguments!"
-  echo "Usage is: $0 drive_device_specifier"
+readonly USAGE=\
+"$(basename "$0") -- program to burn-in disks
+
+Usage:
+  $(basename "$0") [-h] [-f] [-o <directory>] <disk>
+
+By default the program runs in dry mode and no data will be lost.
+
+Options:
+  -h              show help text
+  -f              run in destructive, non-dry mode
+                  ALL DATA ON THE DISK WILL BE LOST!
+  -o <directory>  write log files to <directory>
+                  default: $(pwd)
+  <disk>          disk to burn-in: /dev/<disk>
+                  e.g. specify 'sda' to burn-in '/dev/sda'"
+
+while getopts ':hfo:' option; do
+  case "${option}" in
+    h)  echo "${USAGE}"
+        exit
+        ;;
+    f)  Dry_Run=0
+        ;;
+    o)  LOG_DIR="${OPTARG}"
+        ;;
+    :)  printf 'Missing argument for -%s\n' "${OPTARG}" >&2
+        echo "${USAGE}" >&2
+        exit 2
+        ;;
+   \?)  printf 'Illegal option: -%s\n' "${OPTARG}" >&2
+        echo "${USAGE}" >&2
+        exit 2
+        ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+if [ -z "$1" ]; then
+  echo "Missing option: <disk>" >&2
+  echo "${USAGE}" >&2
   exit 2
 fi
 
 # Drive to burn-in
 readonly Drive="$1"
 
-# Set Dry_Run to a non-zero value to test out the script without actually
-# running any tests; leave it set to zero to burn-in disks.
-readonly Dry_Run=0
+# Run in dry mode if -f wasn't provided
+[ -z "${Dry_Run}" ] && Dry_Run=1
+readonly Dry_Run
+
+# Set to working directory if -o <directory> wasn't provided
+[ -z "${LOG_DIR}" ] && LOG_DIR="$(pwd)"
+# Trim trailing slashes
+LOG_DIR="$(printf '%s' "${LOG_DIR}" | awk '{gsub(/\/+$/, ""); printf $1}')"
+readonly LOG_DIR
+
+# Create directory if it doesn't exist
+mkdir -p -- "${LOG_DIR}" || exit 2
 
 # System information
 readonly HOSTNAME="$(hostname)"
 readonly OS_FLAVOR="$(uname)"
-
-# Directory specifiers for log and badblocks data files. Leave off the trailing
-# slash if you specify a value. Default is the current working directory.
-readonly Log_Dir="$(pwd)"
-readonly BB_Dir="$(pwd)"
-
-# Alternative:
-#readonly Log_Dir="."
-#readonly BB_Dir="."
 
 ########################################################################
 #
@@ -216,8 +253,8 @@ readonly Disk_Model
 readonly Serial_Number="$(get_smart_info_value "Serial Number")"
 
 # Form the log and bad blocks data filenames:
-readonly Log_File="${Log_Dir}/burnin-${Disk_Model}_${Serial_Number}.log"
-readonly BB_File="${BB_Dir}/burnin-${Disk_Model}_${Serial_Number}.bb"
+readonly Log_File="${LOG_DIR}/burnin-${Disk_Model}_${Serial_Number}.log"
+readonly BB_File="${LOG_DIR}/burnin-${Disk_Model}_${Serial_Number}.bb"
 
 ##################################################
 # Get SMART recommended test duration, in minutes.
@@ -354,7 +391,7 @@ run_smart_test()
 
 ##################################################
 # Run badblocks test.
-# !!! THIS WILL ERASE ALL DATA ON THE DISK !!!!
+# !!! ALL DATA ON THE DISK WILL BE LOST !!!
 # Globals:
 #   BB_File
 #   Drive
