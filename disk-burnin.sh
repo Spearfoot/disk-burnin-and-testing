@@ -91,7 +91,7 @@
 #
 # Requires the smartmontools, available at https://www.smartmontools.org
 #
-# Uses: grep, pcregrep, awk, sed, tr, sleep, badblocks
+# Uses: grep, awk, sed, sleep, badblocks
 #
 # Written by Keith Nash, March 2017
 #
@@ -161,15 +161,40 @@ BB_Dir=$(pwd)
 #
 ########################################################################
 
-# Obtain the disk model and serial number:
+# SMART static information
+readonly SMART_INFO="$(smartctl --info "/dev/${Drive}")"
+readonly SMART_CAPABILITIES="$(smartctl --capabilities "/dev/${Drive}")"
 
-Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Device Model" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
+##################################################
+# Get SMART information value.
+# Globals:
+#   SMART_INFO
+# Arguments:
+#   value identifier:
+#     !!! Only TWO WORD indentifiers are supported !!!
+#     !!! Querying e.g. "ATA Version is" will fail !!!
+#     - Device Model
+#     - Model Family
+#     - Serial Number
+# Outputs:
+#   Write value to stdout.
+##################################################
+get_smart_info_value() {
+  # $1=$2="";                     select all but first two columns
+  # gsub(/^[ \t]+|[ \t]+$/, "");  replace leading and trailing whitespace
+  # gsub(/ /, "_");               replace remaining spaces with underscores
+  # printf $1                     print result without newline at the end
+  printf '%s' "${SMART_INFO}" \
+    | grep "$1" \
+    | awk '{$1=$2=""; gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/ /, "_"); printf $1}'
+}
 
-if [ -z "$Disk_Model" ]; then
-  Disk_Model=$(smartctl -i /dev/"$Drive" | grep "Model Family" | awk '{print $3, $4, $5}' | sed -e 's/^[ \t]*//;s/[ \t]*$//' | sed -e 's/ /_/')
-fi
+# Get disk model
+Disk_Model="$(get_smart_info_value "Device Model")"
+[ -z "${Disk_Model}" ] && Disk_Model="$(get_smart_info_value "Model Family")"
 
-Serial_Number=$(smartctl -i /dev/"$Drive" | grep -i "Serial Number" | awk '{print $3}' | sed -e 's/ /_/')
+# Get disk serial number
+Serial_Number="$(get_smart_info_value "Serial Number")"
 
 # Form the log and bad blocks data filenames:
 
@@ -179,13 +204,31 @@ Log_File=$Log_Dir/$Log_File
 BB_File="burnin-${Disk_Model}_${Serial_Number}.bb"
 BB_File=$BB_Dir/$BB_File
 
-# Query the short and extended test duration, in minutes. Use the values to
-# calculate how long we should sleep after starting the SMART tests:
+##################################################
+# Get SMART recommended test duration, in minutes.
+# Globals:
+#   SMART_CAPABILITIES
+# Arguments:
+#   test type:
+#     - Short
+#     - Extended
+#     - Conveyance
+# Outputs:
+#   Write duration to stdout.
+##################################################
+get_smart_test_duration() {
+  # '/'"$1"' self-test routine/   match duration depending on test type arg
+  # getline;                      jump to next line
+  # gsub(/\(|\)/, "");            remove parantheses
+  # printf $4                     print 4th column without newline at the end
+  printf '%s' "${SMART_CAPABILITIES}" \
+    | awk '/'"$1"' self-test routine/{getline; gsub(/\(|\)/, ""); printf $4}'
+}
 
-Short_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Short self-test routine.*\n.*recommended polling time:" | sed -e 's/)//;s/(//' | awk '{print $4}' | tr -d '\n')
+Short_Test_Minutes="$(get_smart_test_duration "Short")"
 #printf "Short_Test_Minutes=[%s]\n" ${Short_Test_Minutes}
 
-Extended_Test_Minutes=$(smartctl -c /dev/"$Drive" | pcregrep -M "Extended self-test routine.*\n.*recommended polling time:" | sed -e 's/)//;s/(//' | awk '{print $4}' | tr -d '\n')
+Extended_Test_Minutes="$(get_smart_test_duration "Extended")"
 #printf "Extended_Test_Minutes=[%s]\n" ${Extended_Test_Minutes}
 
 Short_Test_Sleep=$((Short_Test_Minutes*60))

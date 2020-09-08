@@ -95,7 +95,7 @@ The script should run successfully on any SATA disk with SMART capabilities, whi
 
 Requires the smartmontools, available at [www.smartmontools.org](https://www.smartmontools.org)
 
-Uses: `grep`, `pcregrep`, `awk`, `sed`, `tr`, `sleep`, `badblocks`
+Uses: `grep`, `awk`, `sed`, `sleep`, `badblocks`
 
 Tested with the static analysis tool at [www.shellcheck.net](https://www.shellcheck.net) to insure that the code is POSIX-compliant and free of issues.
 
