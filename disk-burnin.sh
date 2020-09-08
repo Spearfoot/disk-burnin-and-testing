@@ -321,48 +321,50 @@ poll_selftest_complete()
   return 1
 }
 
-run_short_test()
+##################################################
+# Run SMART test and log results.
+# Globals:
+#   Drive
+#   Log_File
+# Arguments:
+#   Test type:
+#     - short
+#     - long
+#   Test duration in seconds.
+##################################################
+run_smart_test()
 {
-  log_header "Run SMART short test on drive /dev/${Drive}"
+  log_header "Run SMART $1 test on drive /dev/${Drive}"
   if [ "${Dry_Run}" -eq 0 ]; then
-    smartctl -t short /dev/"$Drive"
-    log_info "Short test started, sleeping ${Short_Test_Seconds} seconds until it finishes"
-    sleep ${Short_Test_Seconds}
+    smartctl --test="$1" --captive "/dev/${Drive}"
+    log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
+    sleep "$2"
     poll_selftest_complete
-    smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
+    smartctl --log=selftest "/dev/${Drive}" | tee -a "${Log_File}"
   else
-    log_info "Dry run: would start the SMART short test and sleep ${Short_Test_Seconds} seconds until the test finishes"
+    log_info "Dry run: would start the SMART $1 test and sleep $2 seconds until the test finishes"
   fi
-  log_info "Finished SMART short test on drive /dev/${Drive}: $(date)"
+  log_info "Finished SMART short test on drive /dev/${Drive}"
 }
 
-run_extended_test()
-{
-  log_header "Run SMART extended test on drive /dev/${Drive}"
-  if [ "${Dry_Run}" -eq 0 ]; then
-    smartctl -t long /dev/"$Drive"
-    log_info "Extended test started, sleeping ${Extended_Test_Seconds} seconds until it finishes"
-    sleep ${Extended_Test_Seconds}
-    poll_selftest_complete
-    smartctl -l selftest /dev/"$Drive" | tee -a "$Log_File"
-  else
-    log_info "Dry run: would start the SMART extended test and sleep ${Extended_Test_Seconds} seconds until the test finishes"
-  fi
-  log_info "Finished SMART extended test on drive /dev/${Drive}: $(date)"
-}
-
+##################################################
+# Run badblocks test.
+# !!! THIS WILL ERASE ALL DATA ON THE DISK !!!!
+# Globals:
+#   BB_File
+#   Drive
+# Arguments:
+#   None
+##################################################
 run_badblocks_test()
 {
   log_header "Run badblocks test on drive /dev/${Drive}"
   if [ "${Dry_Run}" -eq 0 ]; then
-#
-#   This is the command which erases all data on the disk:
-#
-    badblocks -b 4096 -wsv -e 1 -o "$BB_File" /dev/"$Drive"
+    badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "/dev/${Drive}"
   else
     log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${Drive}"
   fi
-  log_info "Finished badblocks test on drive /dev/${Drive}: $(date)"
+  log_info "Finished badblocks test on drive /dev/${Drive}"
 }
 
 ########################################################################
@@ -388,15 +390,13 @@ log_info "Log file: ${Log_File}"
 log_info "Bad blocks file: ${BB_File}"
 
 # Run the test sequence:
-run_short_test
-#run_extended_test
+run_smart_test "short" "${Short_Test_Seconds}"
 run_badblocks_test
-#run_short_test
-run_extended_test
+run_smart_test "long" "${Extended_Test_Seconds}"
 
 # Emit full device information to log:
 log_header "SMART information for drive /dev/${Drive}"
-smartctl -x -v 7,hex48 /dev/"$Drive" | tee -a "$Log_File"
+smartctl --xall --vendorattribute=7,hex48 "/dev/${Drive}" | tee -a "$Log_File"
 
 log_header "Finished burn-in of /dev/${Drive}"
 
