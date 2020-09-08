@@ -147,23 +147,21 @@ if [ $# -ne 1 ]; then
   exit 2
 fi
 
-Drive=$1
+# Drive to burn-in
+readonly Drive="$1"
 
 # Set Dry_Run to a non-zero value to test out the script without actually
 # running any tests; leave it set to zero to burn-in disks.
+readonly Dry_Run=0
 
-Dry_Run=0
-
-# Directory specifiers for log and badblocks data files. Leave off the
-# trailing slash if you specify a value. Default is the current working
-# directory.
-
-Log_Dir=$(pwd)
-BB_Dir=$(pwd)
+# Directory specifiers for log and badblocks data files. Leave off the trailing
+# slash if you specify a value. Default is the current working directory.
+readonly Log_Dir="$(pwd)"
+readonly BB_Dir="$(pwd)"
 
 # Alternative:
-#Log_Dir="."
-#BB_Dir="."
+#readonly Log_Dir="."
+#readonly BB_Dir="."
 
 ########################################################################
 #
@@ -202,17 +200,14 @@ get_smart_info_value() {
 # Get disk model
 Disk_Model="$(get_smart_info_value "Device Model")"
 [ -z "${Disk_Model}" ] && Disk_Model="$(get_smart_info_value "Model Family")"
+readonly Disk_Model
 
 # Get disk serial number
-Serial_Number="$(get_smart_info_value "Serial Number")"
+readonly Serial_Number="$(get_smart_info_value "Serial Number")"
 
 # Form the log and bad blocks data filenames:
-
-Log_File="burnin-${Disk_Model}_${Serial_Number}.log"
-Log_File=$Log_Dir/$Log_File
-
-BB_File="burnin-${Disk_Model}_${Serial_Number}.bb"
-BB_File=$BB_Dir/$BB_File
+readonly Log_File="${Log_Dir}/burnin-${Disk_Model}_${Serial_Number}.log"
+readonly BB_File="${BB_Dir}/burnin-${Disk_Model}_${Serial_Number}.bb"
 
 ##################################################
 # Get SMART recommended test duration, in minutes.
@@ -239,19 +234,19 @@ get_smart_test_duration() {
 # Afterwards the completion status is repeatedly polled.
 
 # SMART short test duration
-Short_Test_Minutes="$(get_smart_test_duration "Short")"
-Short_Test_Seconds="$(( Short_Test_Minutes * 60))"
+readonly Short_Test_Minutes="$(get_smart_test_duration "Short")"
+readonly Short_Test_Seconds="$(( Short_Test_Minutes * 60))"
 
 # SMART extended test duration
-Extended_Test_Minutes="$(get_smart_test_duration "Extended")"
-Extended_Test_Seconds="$(( Extended_Test_Minutes * 60 ))"
+readonly Extended_Test_Minutes="$(get_smart_test_duration "Extended")"
+readonly Extended_Test_Seconds="$(( Extended_Test_Minutes * 60 ))"
 
 # Maximum duration the completion status is polled
-Poll_Timeout_Hours=4
-Poll_Timeout_Seconds="$(( Poll_Timeout_Hours * 60 * 60))"
+readonly Poll_Timeout_Hours=4
+readonly Poll_Timeout_Seconds="$(( Poll_Timeout_Hours * 60 * 60))"
 
 # Sleep interval between completion status polls
-Poll_Interval_Seconds=15
+readonly Poll_Interval_Seconds=15
 
 ########################################################################
 #
@@ -303,13 +298,13 @@ poll_selftest_complete()
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${Poll_Timeout_Seconds}" ]; do
     smartctl --all "/dev/${Drive}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
-    l_status=$?
+    l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test succeeded"
       return 0
     fi
     smartctl --all "/dev/${Drive}" | grep -i "of the test failed." > /dev/null 2<&1
-    l_status=$?
+    l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test failed"
       return 0
@@ -402,7 +397,7 @@ log_header "Finished burn-in of /dev/${Drive}"
 
 # Clean up the log file:
 
-osflavor=$(uname)
+osflavor="$(uname)"
 
 if [ "${osflavor}" = "Linux" ]; then
   sed -i -e '/Copyright/d' "${Log_File}"
