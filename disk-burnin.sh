@@ -154,6 +154,10 @@ readonly Drive="$1"
 # running any tests; leave it set to zero to burn-in disks.
 readonly Dry_Run=0
 
+# System information
+readonly HOSTNAME="$(hostname)"
+readonly OS_FLAVOR="$(uname)"
+
 # Directory specifiers for log and badblocks data files. Leave off the trailing
 # slash if you specify a value. Default is the current working directory.
 readonly Log_Dir="$(pwd)"
@@ -329,7 +333,7 @@ poll_selftest_complete()
 ##################################################
 run_smart_test()
 {
-  log_header "Run SMART $1 test on drive /dev/${Drive}"
+  log_header "Run SMART $1 test"
   if [ "${Dry_Run}" -eq 0 ]; then
     smartctl --test="$1" --captive "/dev/${Drive}"
     log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
@@ -339,7 +343,7 @@ run_smart_test()
   else
     log_info "Dry run: would start the SMART $1 test and sleep $2 seconds until the test finishes"
   fi
-  log_info "Finished SMART short test on drive /dev/${Drive}"
+  log_info "Finished SMART short test"
 }
 
 ##################################################
@@ -353,13 +357,13 @@ run_smart_test()
 ##################################################
 run_badblocks_test()
 {
-  log_header "Run badblocks test on drive /dev/${Drive}"
+  log_header "Running badblocks test"
   if [ "${Dry_Run}" -eq 0 ]; then
     badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "/dev/${Drive}"
   else
     log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${Drive}"
   fi
-  log_info "Finished badblocks test on drive /dev/${Drive}"
+  log_info "Finished badblocks test"
 }
 
 ########################################################################
@@ -372,17 +376,17 @@ if [ -e "$Log_File" ]; then
   rm "$Log_File"
 fi
 
-log_header "Started burn-in of /dev/${Drive}"
+log_header "Started burn-in"
 
-log_info "Host: $(hostname)"
-log_info "Drive Model: ${Disk_Model}"
-log_info "Serial Number: ${Serial_Number}"
-log_info "Short test duration: ${Short_Test_Minutes} minutes"
-log_info "Short test sleep duration: ${Short_Test_Seconds} seconds"
-log_info "Extended test duration: ${Extended_Test_Minutes} minutes"
-log_info "Extended test sleep duration: ${Extended_Test_Seconds} seconds"
-log_info "Log file: ${Log_File}"
-log_info "Bad blocks file: ${BB_File}"
+log_info "Host:                   ${HOSTNAME}"
+log_info "OS Flavor:              ${OS_FLAVOR}"
+log_info "Drive:                  /dev/${Drive}"
+log_info "Drive Model:            ${Disk_Model}"
+log_info "Serial Number:          ${Serial_Number}"
+log_info "Short test duration:    ${Short_Test_Minutes} minutes / ${Short_Test_Seconds} seconds"
+log_info "Extended test duration: ${Extended_Test_Minutes} minutes / ${Extended_Test_Seconds} seconds"
+log_info "Log file:               ${Log_File}"
+log_info "Bad blocks file:        ${BB_File}"
 
 # Run the test sequence:
 run_smart_test "short" "${Short_Test_Seconds}"
@@ -390,16 +394,14 @@ run_badblocks_test
 run_smart_test "long" "${Extended_Test_Seconds}"
 
 # Emit full device information to log:
-log_header "SMART information for drive /dev/${Drive}"
+log_header "SMART and non-SMART information"
 smartctl --xall --vendorattribute=7,hex48 "/dev/${Drive}" | tee -a "$Log_File"
 
-log_header "Finished burn-in of /dev/${Drive}"
+log_header "Finished burn-in"
 
 # Clean up the log file:
 
-osflavor="$(uname)"
-
-if [ "${osflavor}" = "Linux" ]; then
+if [ "${OS_FLAVOR}" = "Linux" ]; then
   sed -i -e '/Copyright/d' "${Log_File}"
   sed -i -e '/=== START OF READ/d' "${Log_File}"
   sed -i -e '/SMART Attributes Data/d' "${Log_File}"
@@ -407,7 +409,7 @@ if [ "${osflavor}" = "Linux" ]; then
   sed -i -e '/SMART Error Log Version/d' "${Log_File}"
 fi
 
-if [ "${osflavor}" = "FreeBSD" ]; then
+if [ "${OS_FLAVOR}" = "FreeBSD" ]; then
   sed -i '' -e '/Copyright/d' "${Log_File}"
   sed -i '' -e '/=== START OF READ/d' "${Log_File}"
   sed -i '' -e '/SMART Attributes Data/d' "${Log_File}"
