@@ -230,7 +230,12 @@ fi
 ################################################################################
 
 # Drive to burn-in
-readonly DRIVE="$1"
+DRIVE="$1"
+# prepend /dev/ if necessary
+if ! printf '%s' "${DRIVE}" | grep "/dev/*" > /dev/null 2>&1; then
+  DRIVE="/dev/${DRIVE}"
+fi
+readonly DRIVE
 
 # Run in dry mode if -f wasn't provided
 [ -z "${DRY_RUN}" ] && DRY_RUN=1
@@ -247,8 +252,8 @@ readonly HOSTNAME="$(hostname)"
 readonly OS_FLAVOR="$(uname)"
 
 # SMART static information
-readonly SMART_INFO="$(smartctl --info "/dev/${DRIVE}")"
-readonly SMART_CAPABILITIES="$(smartctl --capabilities "/dev/${DRIVE}")"
+readonly SMART_INFO="$(smartctl --info "${DRIVE}")"
+readonly SMART_CAPABILITIES="$(smartctl --capabilities "${DRIVE}")"
 
 ##################################################
 # Get SMART information value.
@@ -369,13 +374,13 @@ poll_selftest_complete()
 {
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${POLL_TIMEOUT_SECONDS}" ]; do
-    smartctl --all "/dev/${DRIVE}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
+    smartctl --all "${DRIVE}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test succeeded"
       return 0
     fi
-    smartctl --all "/dev/${DRIVE}" | grep -i "of the test failed." > /dev/null 2<&1
+    smartctl --all "${DRIVE}" | grep -i "of the test failed." > /dev/null 2<&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test failed"
@@ -403,11 +408,11 @@ run_smart_test()
 {
   log_header "Run SMART $1 test"
   if [ "${DRY_RUN}" -eq 0 ]; then
-    smartctl --test="$1" "/dev/${DRIVE}"
+    smartctl --test="$1" "${DRIVE}"
     log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
     sleep "$2"
     poll_selftest_complete
-    smartctl --log=selftest "/dev/${DRIVE}" | tee -a "${LOG_FILE}"
+    smartctl --log=selftest "${DRIVE}" | tee -a "${LOG_FILE}"
   else
     log_info "Dry run: would start the SMART $1 test and sleep $2 seconds until the test finishes"
   fi
@@ -427,9 +432,9 @@ run_badblocks_test()
 {
   log_header "Running badblocks test"
   if [ "${DRY_RUN}" -eq 0 ]; then
-    badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "/dev/${DRIVE}"
+    badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "${DRIVE}"
   else
-    log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${DRIVE}"
+    log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} ${DRIVE}"
   fi
   log_info "Finished badblocks test"
 }
@@ -449,7 +454,7 @@ log_header "Started burn-in"
 
 log_info "Host:                   ${HOSTNAME}"
 log_info "OS Flavor:              ${OS_FLAVOR}"
-log_info "Drive:                  /dev/${DRIVE}"
+log_info "Drive:                  ${DRIVE}"
 log_info "Drive Model:            ${DISK_MODEL}"
 log_info "Serial Number:          ${SERIAL_NUMBER}"
 log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes / ${SHORT_TEST_SECONDS} seconds"
@@ -464,7 +469,7 @@ run_smart_test "long" "${EXTENDED_TEST_SECONDS}"
 
 # Emit full device information to log:
 log_header "SMART and non-SMART information"
-smartctl --xall --vendorattribute=7,hex48 "/dev/${DRIVE}" | tee -a "${LOG_FILE}"
+smartctl --xall --vendorattribute=7,hex48 "${DRIVE}" | tee -a "${LOG_FILE}"
 
 log_header "Finished burn-in"
 
