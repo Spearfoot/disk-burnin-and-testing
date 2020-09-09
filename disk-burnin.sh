@@ -200,7 +200,7 @@ while getopts ':hefo:' option; do
         echo "${USAGE_2}"
         exit
         ;;
-    f)  DRY_RUN=0
+    f)  readonly DRY_RUN=0
         ;;
     o)  LOG_DIR="${OPTARG}"
         ;;
@@ -248,10 +248,6 @@ if ! printf '%s' "${DRIVE}" | grep "/dev/\w*" > /dev/null 2>&1; then
   DRIVE="/dev/${DRIVE}"
 fi
 readonly DRIVE
-
-# Run in dry mode if -f wasn't provided
-[ -z "${DRY_RUN}" ] && DRY_RUN=1
-readonly DRY_RUN
 
 # Set to working directory if -o <directory> wasn't provided
 [ -z "${LOG_DIR}" ] && LOG_DIR="$(pwd)"
@@ -428,7 +424,7 @@ cleanup_log() {
 ##################################################
 dry_run_wrapper()
 {
-  if [ "$DRY_RUN" ]; then
+  if [ -z "$DRY_RUN" ]; then
       log_info "DRY RUN: $*"
       return 0
   fi
