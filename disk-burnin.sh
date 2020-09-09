@@ -182,8 +182,9 @@ VERSIONS
         Improve portability and resiliency.
         Check availability of dependencies during runtim.
         Check for root privileges during runtime.
-        Add option parsing, most notably (-h)elp and -f for destructive, non-dry mode.
-        Add dry_run_wrapper() function."
+        Add option parsing, most notably (-h)elp and -f for non-dry-run mode.
+        Add dry_run_wrapper() function.
+        Add disk type detection to skip badblocks for non-mechanical drives."
 
 ################################################################################
 # PRE-EXECUTION VALIDATION
@@ -316,6 +317,15 @@ DISK_MODEL="$(get_smart_info_value "Device Model")"
 [ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Family")"
 readonly DISK_MODEL
 
+# Get disk type
+DISK_TYPE="$(get_smart_info_value "Rotation Rate")"
+if printf '%s' "${DISK_TYPE}" | grep "rpm" > /dev/null 2>&1; then
+  DISK_TYPE="mechanical"
+else
+  DISK_TYPE="non-mechanical"
+fi
+readonly DISK_TYPE
+
 # Get disk serial number
 readonly SERIAL_NUMBER="$(get_smart_info_value "Serial Number")"
 
@@ -430,6 +440,7 @@ dry_run_wrapper()
 #   HOSTNAME
 #   OS_FLAVOR
 #   DRIVE
+#   DISK_TYPE
 #   DISK_MODEL
 #   SERIAL_NUMBER
 #   SHORT_TEST_MINUTES
@@ -445,6 +456,7 @@ log_runtime_info() {
   log_info "Host:                   ${HOSTNAME}"
   log_info "OS Flavor:              ${OS_FLAVOR}"
   log_info "Drive:                  ${DRIVE}"
+  log_info "Disk Type:              ${DISK_TYPE}"
   log_info "Drive Model:            ${DISK_MODEL}"
   log_info "Serial Number:          ${SERIAL_NUMBER}"
   log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes"
@@ -517,6 +529,7 @@ run_smart_test()
 # !!! ALL DATA ON THE DISK WILL BE LOST !!!
 # Globals:
 #   BB_File
+#   DISK_TYPE
 #   DRIVE
 # Arguments:
 #   None
@@ -524,7 +537,11 @@ run_smart_test()
 run_badblocks_test()
 {
   log_header "Running badblocks test"
-  dry_run_wrapper "badblocks -b 4096 -wsv -e 1 -o \"${BB_File}\" \"${DRIVE}\""
+  if [ "${DISK_TYPE}" = "mechanical" ]; then
+    dry_run_wrapper "badblocks -b 4096 -wsv -e 1 -o \"${BB_File}\" \"${DRIVE}\""
+  else
+    log_info "SKIPPED: badblocks for ${DISK_TYPE} device"
+  fi
   log_info "Finished badblocks test"
 }
 
