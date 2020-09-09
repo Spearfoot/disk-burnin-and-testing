@@ -36,15 +36,15 @@ EXAMPLES
     $(basename "$0") -fo ~/burn-in-logs sdc
                       run in destructive, non-dry mode on disk /dev/sdc and
                       write the log files to ~/burn-in-logs directory
-
-EXIT STATUS
+"
+readonly USAGE_2=\
+"EXIT STATUS
     exit 0:           script finishes successfully
     exit 2:           dependencies are missing
                       not running as 'root'
                       illegal options are provided
-"
-readonly USAGE_2=\
-"NOTES
+
+NOTES
     Be warned that:
 
         1> The script runs badblocks in destructive mode, which erases any data
@@ -359,6 +359,76 @@ log_header()
 }
 
 ##################################################
+# Ensure log directory exists and remove old logs.
+# Globals:
+#   LOG_DIR
+#   LOG_FILE
+# Arguments:
+#   None
+##################################################
+init_log() {
+  mkdir -p -- "${LOG_DIR}" || exit 2
+  [ -e "${LOG_FILE}" ] && rm -- "${LOG_FILE}"
+}
+
+##################################################
+# Remove redundant messages from log.
+# Globals:
+#   LOG_FILE
+#   OS_FLAVOR
+# Arguments:
+#   None
+##################################################
+cleanup_log() {
+  if [ "${OS_FLAVOR}" = "Linux" ]; then
+    sed -i -e '/Copyright/d' "${LOG_FILE}"
+    sed -i -e '/=== START OF READ/d' "${LOG_FILE}"
+    sed -i -e '/SMART Attributes Data/d' "${LOG_FILE}"
+    sed -i -e '/Vendor Specific SMART/d' "${LOG_FILE}"
+    sed -i -e '/SMART Error Log Version/d' "${LOG_FILE}"
+  fi
+
+  if [ "${OS_FLAVOR}" = "FreeBSD" ]; then
+    sed -i '' -e '/Copyright/d' "${LOG_FILE}"
+    sed -i '' -e '/=== START OF READ/d' "${LOG_FILE}"
+    sed -i '' -e '/SMART Attributes Data/d' "${LOG_FILE}"
+    sed -i '' -e '/Vendor Specific SMART/d' "${LOG_FILE}"
+    sed -i '' -e '/SMART Error Log Version/d' "${LOG_FILE}"
+  fi
+}
+
+##################################################
+# Log runtime information about current burn-in.
+# Globals:
+#   HOSTNAME
+#   OS_FLAVOR
+#   DRIVE
+#   DISK_MODEL
+#   SERIAL_NUMBER
+#   SHORT_TEST_MINUTES
+#   SHORT_TEST_SECONDS
+#   EXTENDED_TEST_MINUTES
+#   EXTENDED_TEST_SECONDS
+#   LOG_FILE
+#   BB_File
+# Arguments:
+#   None
+##################################################
+log_runtime_info() {
+  log_info "Host:                   ${HOSTNAME}"
+  log_info "OS Flavor:              ${OS_FLAVOR}"
+  log_info "Drive:                  ${DRIVE}"
+  log_info "Drive Model:            ${DISK_MODEL}"
+  log_info "Serial Number:          ${SERIAL_NUMBER}"
+  log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes"
+  log_info "                        ${SHORT_TEST_SECONDS} seconds"
+  log_info "Extended test duration: ${EXTENDED_TEST_MINUTES} minutes"
+  log_info "                        ${EXTENDED_TEST_SECONDS} seconds"
+  log_info "Log file:               ${LOG_FILE}"
+  log_info "Bad blocks file:        ${BB_File}"
+}
+
+##################################################
 # Poll repeatedly whether SMART self-test has completed.
 # Globals:
 #   DRIVE
@@ -439,54 +509,43 @@ run_badblocks_test()
   log_info "Finished badblocks test"
 }
 
-################################################################################
-# ACTIONS BEGINS HERE
-################################################################################
+##################################################
+# Log extensive SMART and non-SMART drive information.
+# Globals:
+#   DRIVE
+#   LOG_FILE
+# Arguments:
+#   None
+##################################################
+log_full_device_info() {
+  log_header "SMART and non-SMART information"
+  smartctl --xall --vendorattribute=7,hex48 "${DRIVE}" | tee -a "${LOG_FILE}"
+}
 
-# Create log directory if it doesn't exist
-mkdir -p -- "${LOG_DIR}" || exit 2
+##################################################
+# Main function of script.
+# Globals:
+#   SHORT_TEST_SECONDS
+#   EXTENDED_TEST_SECONDS
+# Arguments:
+#   None
+##################################################
+main() {
+  init_log
+  log_header "Started burn-in"
 
-if [ -e "${LOG_FILE}" ]; then
-  rm "${LOG_FILE}"
-fi
+  log_runtime_info
 
-log_header "Started burn-in"
+  # test sequence
+  run_smart_test "short" "${SHORT_TEST_SECONDS}"
+  run_badblocks_test
+  run_smart_test "long" "${EXTENDED_TEST_SECONDS}"
 
-log_info "Host:                   ${HOSTNAME}"
-log_info "OS Flavor:              ${OS_FLAVOR}"
-log_info "Drive:                  ${DRIVE}"
-log_info "Drive Model:            ${DISK_MODEL}"
-log_info "Serial Number:          ${SERIAL_NUMBER}"
-log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes / ${SHORT_TEST_SECONDS} seconds"
-log_info "Extended test duration: ${EXTENDED_TEST_MINUTES} minutes / ${EXTENDED_TEST_SECONDS} seconds"
-log_info "Log file:               ${LOG_FILE}"
-log_info "Bad blocks file:        ${BB_File}"
+  log_full_device_info
 
-# Run the test sequence:
-run_smart_test "short" "${SHORT_TEST_SECONDS}"
-run_badblocks_test
-run_smart_test "long" "${EXTENDED_TEST_SECONDS}"
+  log_header "Finished burn-in"
+  cleanup_log
+}
 
-# Emit full device information to log:
-log_header "SMART and non-SMART information"
-smartctl --xall --vendorattribute=7,hex48 "${DRIVE}" | tee -a "${LOG_FILE}"
-
-log_header "Finished burn-in"
-
-# Clean up the log file:
-
-if [ "${OS_FLAVOR}" = "Linux" ]; then
-  sed -i -e '/Copyright/d' "${LOG_FILE}"
-  sed -i -e '/=== START OF READ/d' "${LOG_FILE}"
-  sed -i -e '/SMART Attributes Data/d' "${LOG_FILE}"
-  sed -i -e '/Vendor Specific SMART/d' "${LOG_FILE}"
-  sed -i -e '/SMART Error Log Version/d' "${LOG_FILE}"
-fi
-
-if [ "${OS_FLAVOR}" = "FreeBSD" ]; then
-  sed -i '' -e '/Copyright/d' "${LOG_FILE}"
-  sed -i '' -e '/=== START OF READ/d' "${LOG_FILE}"
-  sed -i '' -e '/SMART Attributes Data/d' "${LOG_FILE}"
-  sed -i '' -e '/Vendor Specific SMART/d' "${LOG_FILE}"
-  sed -i '' -e '/SMART Error Log Version/d' "${LOG_FILE}"
-fi
+# Entrypoint
+main
