@@ -375,7 +375,7 @@ run_smart_test()
 {
   log_header "Run SMART $1 test"
   if [ "${DRY_RUN}" -eq 0 ]; then
-    smartctl --test="$1" --captive "/dev/${DRIVE}"
+    smartctl --test="$1" "/dev/${DRIVE}"
     log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
     sleep "$2"
     poll_selftest_complete
