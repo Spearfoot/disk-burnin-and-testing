@@ -132,7 +132,7 @@ NOTES
             Gold
             Re (WD4000FYYZ)
         Seagate
-          IronWolf NAS HDD 12TB (ST12000VN0008)
+            IronWolf NAS HDD 12TB (ST12000VN0008)
 
 VERSIONS
     Written by Keith Nash, March 2017
@@ -398,6 +398,22 @@ cleanup_log() {
 }
 
 ##################################################
+# Log command in dry-run mode, run command otherwise.
+# Globals:
+#   DRY_RUN
+# Arguments:
+#   Command to run.
+##################################################
+dry_run_wrapper()
+{
+  if [ "$DRY_RUN" ]; then
+      log_info "DRY RUN: $*"
+      return 0
+  fi
+  eval "$@"
+}
+
+##################################################
 # Log runtime information about current burn-in.
 # Globals:
 #   HOSTNAME
@@ -476,17 +492,13 @@ poll_selftest_complete()
 ##################################################
 run_smart_test()
 {
-  log_header "Run SMART $1 test"
-  if [ "${DRY_RUN}" -eq 0 ]; then
-    smartctl --test="$1" "${DRIVE}"
-    log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
-    sleep "$2"
-    poll_selftest_complete
-    smartctl --log=selftest "${DRIVE}" | tee -a "${LOG_FILE}"
-  else
-    log_info "Dry run: would start the SMART $1 test and sleep $2 seconds until the test finishes"
-  fi
-  log_info "Finished SMART short test"
+  log_header "Running SMART $1 test"
+  dry_run_wrapper "smartctl --test=\"$1\" \"${DRIVE}\""
+  log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
+  dry_run_wrapper "sleep \"$2\""
+  dry_run_wrapper "poll_selftest_complete"
+  dry_run_wrapper "smartctl --log=selftest \"${DRIVE}\" | tee -a \"${LOG_FILE}\""
+  log_info "Finished SMART $1 test"
 }
 
 ##################################################
@@ -501,11 +513,7 @@ run_smart_test()
 run_badblocks_test()
 {
   log_header "Running badblocks test"
-  if [ "${DRY_RUN}" -eq 0 ]; then
-    badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "${DRIVE}"
-  else
-    log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} ${DRIVE}"
-  fi
+  dry_run_wrapper "badblocks -b 4096 -wsv -e 1 -o \"${BB_File}\" \"${DRIVE}\""
   log_info "Finished badblocks test"
 }
 
@@ -519,7 +527,7 @@ run_badblocks_test()
 ##################################################
 log_full_device_info() {
   log_header "SMART and non-SMART information"
-  smartctl --xall --vendorattribute=7,hex48 "${DRIVE}" | tee -a "${LOG_FILE}"
+  dry_run_wrapper "smartctl --xall --vendorattribute=7,hex48 \"${DRIVE}\" | tee -a \"${LOG_FILE}\""
 }
 
 ##################################################
