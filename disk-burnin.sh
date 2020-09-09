@@ -225,7 +225,7 @@ fi
 # Check required dependencies
 readonly DEPENDENCIES="awk badblocks grep sed sleep"
 for dependency in ${DEPENDENCIES}; do
-  if ! command -v "${dependency}" > /dev/null 2>&1 ; then
+  if ! command -v "${dependency}" > /dev/null 2>&1; then
     echo "Command '${dependency}' not found" >&2
     exit 2
   fi
@@ -244,7 +244,7 @@ fi
 # Drive to burn-in
 DRIVE="$1"
 # prepend /dev/ if necessary
-if ! printf '%s' "${DRIVE}" | grep "/dev/*" > /dev/null 2>&1; then
+if ! printf '%s' "${DRIVE}" | grep "/dev/\w*" > /dev/null 2>&1; then
   DRIVE="/dev/${DRIVE}"
 fi
 readonly DRIVE
@@ -483,13 +483,15 @@ poll_selftest_complete()
 {
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${POLL_TIMEOUT_SECONDS}" ]; do
-    smartctl --all "${DRIVE}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
+    smartctl --all "${DRIVE}" \
+      | grep -i "The previous self-test routine completed" > /dev/null 2>&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test succeeded"
       return 0
     fi
-    smartctl --all "${DRIVE}" | grep -i "of the test failed." > /dev/null 2<&1
+    smartctl --all "${DRIVE}" \
+      | grep -i "of the test failed\." > /dev/null 2>&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test failed"
