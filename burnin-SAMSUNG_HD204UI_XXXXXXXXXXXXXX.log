@@ -1,0 +1,45 @@
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + Started burn-in
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] Host:                   arch-desktop
+[2020-09-09 21:58:23 CEST] OS Flavor:              Linux
+[2020-09-09 21:58:23 CEST] Drive:                  /dev/sdb
+[2020-09-09 21:58:23 CEST] Disk Type:              mechanical
+[2020-09-09 21:58:23 CEST] Drive Model:            SAMSUNG_HD204UI
+[2020-09-09 21:58:23 CEST] Serial Number:          XXXXXXXXXXXXXX
+[2020-09-09 21:58:23 CEST] Short test duration:    2 minutes
+[2020-09-09 21:58:23 CEST]                         120 seconds
+[2020-09-09 21:58:23 CEST] Extended test duration: 341 minutes
+[2020-09-09 21:58:23 CEST]                         20460 seconds
+[2020-09-09 21:58:23 CEST] Log file:               ./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.log
+[2020-09-09 21:58:23 CEST] Bad blocks file:        ./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.bb
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + Running SMART short test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] DRY RUN: smartctl --test="short" "/dev/sdb"
+[2020-09-09 21:58:23 CEST] SMART short test started, awaiting completion for 120 seconds ...
+[2020-09-09 21:58:23 CEST] DRY RUN: sleep "120"
+[2020-09-09 21:58:23 CEST] DRY RUN: poll_selftest_complete
+[2020-09-09 21:58:23 CEST] DRY RUN: smartctl --log=selftest "/dev/sdb" | tee -a "./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.log"
+[2020-09-09 21:58:23 CEST] Finished SMART short test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + Running badblocks test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] DRY RUN: badblocks -b 4096 -wsv -e 1 -o "./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.bb" "/dev/sdb"
+[2020-09-09 21:58:23 CEST] Finished badblocks test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + Running SMART long test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] DRY RUN: smartctl --test="long" "/dev/sdb"
+[2020-09-09 21:58:23 CEST] SMART long test started, awaiting completion for 20460 seconds ...
+[2020-09-09 21:58:23 CEST] DRY RUN: sleep "20460"
+[2020-09-09 21:58:23 CEST] DRY RUN: poll_selftest_complete
+[2020-09-09 21:58:23 CEST] DRY RUN: smartctl --log=selftest "/dev/sdb" | tee -a "./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.log"
+[2020-09-09 21:58:23 CEST] Finished SMART long test
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + SMART and non-SMART information
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] DRY RUN: smartctl --xall --vendorattribute=7,hex48 "/dev/sdb" | tee -a "./burnin-SAMSUNG_HD204UI_XXXXXXXXXXXXXX.log"
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
+[2020-09-09 21:58:23 CEST] + Finished burn-in
+[2020-09-09 21:58:23 CEST] +-----------------------------------------------------------------------------
