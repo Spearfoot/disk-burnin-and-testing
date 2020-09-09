@@ -33,7 +33,7 @@ EXAMPLES
     $(basename "$0") -f /dev/sdb
                       run in destructive, non-dry mode on disk /dev/sdb
 
-    $(basename "$0") -fo ~/burn-in-logs sdc
+    $(basename "$0") -f -o ~/burn-in-logs sdc
                       run in destructive, non-dry mode on disk /dev/sdc and
                       write the log files to ~/burn-in-logs directory
 "
@@ -62,8 +62,8 @@ NOTES
 
         4> The script has the following dependencies:
 
-            smartmontools, available at https://www.smartmontools.org
-            Uses: grep, awk, sed, sleep, badblocks
+           smartmontools, available at https://www.smartmontools.org
+           Uses: grep, awk, sed, sleep, badblocks
 
     Performs this test sequence:
 
@@ -93,9 +93,9 @@ NOTES
     The script extracts the drive model and serial number and forms a log file-
     name of the form 'burnin-[model]_[serial number].log'.
 
-     badblocks is invoked with a block size of 4096, the -wsv options, and the
-     -o option to instruct it to write the list of bad blocks found (if any) to
-     a file named 'burnin-[model]_[serial number].bb'.
+    badblocks is invoked with a block size of 4096, the -wsv options, and the
+    -o option to instruct it to write the list of bad blocks found (if any) to
+    a file named 'burnin-[model]_[serial number].bb'.
 
     Before using the script on FreeBSD systems (including FreeNAS) you must
     first execute this sysctl command to alter the kernel's geometry debug
@@ -172,7 +172,18 @@ VERSIONS
         Reduced default tests so that we run:
             1> Short SMART test
             2> badblocks
-            3> Extended SMART test"
+            3> Extended SMART test
+
+    MS, 9 Sep 2020
+        Add .editorconfig to streamlime editor behavior for developers.
+        Remove dependencies on pcregrep and tr.
+        Add documentation to functions and complex statements.
+        Reduce code duplication, simplify and decouple code where possible.
+        Improve portability and resiliency.
+        Check availability of dependencies during runtim.
+        Check for root privileges during runtime.
+        Add option parsing, most notably (-h)elp and -f for destructive, non-dry mode.
+        Add dry_run_wrapper() function."
 
 ################################################################################
 # PRE-EXECUTION VALIDATION

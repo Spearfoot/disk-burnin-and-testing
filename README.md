@@ -64,7 +64,7 @@ The script extracts the drive model and serial number and creates a log filename
 
 * `./disk-burnin.sh sda`: run in dry-run mode on disk `/dev/sda`
 * `./disk-burnin.sh -f /dev/sdb`: run in destructive, non-dry mode on disk `/dev/sdb`
-* `./disk-burnin.sh -fo ~/burn-in-logs sdc`: run in destructive, non-dry mode on disk `/dev/sdc` and write the log files to `~/burn-in-logs` directory
+* `./disk-burnin.sh -f -o ~/burn-in-logs sdc`: run in destructive, non-dry mode on disk `/dev/sdc` and write the log files to `~/burn-in-logs` directory
 
 ## Dry-Run Mode
 
