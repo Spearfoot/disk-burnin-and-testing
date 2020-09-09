@@ -4,7 +4,7 @@ readonly USAGE=\
     $(basename "$0") -- disk burn-in program
 
 SYNOPSIS
-    $(basename "$0") [-h] [-f] [-o <directory>] <disk>
+    $(basename "$0") [-h] [-e] [-f] [-o <directory>] <disk>
 
 DESCRIPTION
     A script to simplify the process of burning-in disks. Only intended for use
