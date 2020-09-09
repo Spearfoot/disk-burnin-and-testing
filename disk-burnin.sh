@@ -315,6 +315,7 @@ get_smart_test_duration() {
 # Get disk model
 DISK_MODEL="$(get_smart_info_value "Device Model")"
 [ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Family")"
+[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Number")"
 readonly DISK_MODEL
 
 # Get disk type
