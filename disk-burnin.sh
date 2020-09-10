@@ -1,178 +1,206 @@
 #!/bin/sh
-########################################################################
-#
-# disk-burnin.sh
-#
-# A script to simplify the process of burning-in disks. Intended for use
-# only on disks which do not contain valuable data, such as new disks or
-# disks which are being tested or re-purposed.
-#
-# Be aware that:
-#
-#   1> This script runs the badblocks program in destructive mode, which
-#      erases any data on the disk.
-#
-#   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#   !!!!!        WILL DESTROY THE DISK CONTENTS! BE CAREFUL!        !!!!!
-#   !!!!! DO NOT RUN THIS SCRIPT ON DISKS CONTAINING DATA YOU VALUE !!!!!
-#   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#
-#   2> Run times for large disks can take several days to complete, so it
-#      is a good idea to use tmux sessions to prevent mishaps.
-#
-#   3> Must be run as 'root'.
-#
-#   4> Tests of large drives can take days to complete: use tmux!
-#
-# Performs these steps:
-#
-#   1> Run SMART short test
-#   2> Run badblocks
-#   3> Run SMART extended test
-#
-# The script sleeps after starting each SMART test, using a duration
-# based on the polling interval reported by the disk, after which the
-# script will poll the disk to verify the self-test has completed.
-#
-# Full SMART information is pulled after each SMART test. All output
-# except for the sleep command is echoed to both the screen and log file.
-#
-# You should monitor the burn-in progress and watch for errors, particularly
-# any errors reported by badblocks, or these SMART errors:
-#
-#   5 Reallocated_Sector_Ct
-# 196 Reallocated_Event_Count
-# 197 Current_Pending_Sector
-# 198 Offline_Uncorrectable
-#
-# These indicate possible problems with the drive. You therefore may
-# wish to abort the remaining tests and proceed with an RMA exchange
-# for new drives or discard old ones. Also please note that this list
-# is not exhaustive.
-#
-# The script extracts the drive model and serial number and forms
-# a log filename of the form 'burnin-[model]_[serial number].log'.
-#
-# badblocks is invoked with a block size of 4096, the -wsv options, and
-# the -o option to instruct it to write the list of bad blocks found (if
-# any) to a file named 'burnin-[model]_[serial number].bb'.
-#
-# The only required command-line argument is the device specifier, e.g.:
-#
-#   ./disk-burnin.sh sda
-#
-# ...will run the burn-in test on device /dev/sda
-#
-# You can run the script in 'dry run mode' (see below) to check the sleep
-# duration calculations and to insure that the sequence of commands suits
-# your needs. In 'dry runs' the script does not actually perform any
-# SMART tests or invoke the sleep or badblocks programs. The script is
-# distributed with 'dry runs' enabled, so you will need to edit the
-# DRY_RUN variable below, setting it to 0, in order to actually perform
-# tests on drives.
-#
-# Before using the script on FreeBSD systems (including FreeNAS) you must
-# first execute this sysctl command to alter the kernel's geometry debug
-# flags. This allows badblocks to write to the entire disk:
-#
-#   sysctl kern.geom.debugflags=0x10
-#
-# Tested under:
-#   FreeNAS 9.10.2 (FreeBSD 10.3-STABLE)
-#   Ubuntu Server 16.04.2 LTS
-#
-# Tested on:
-#   Intel DC S3700 SSD
-#   Intel Model 320 Series SSD
-#   HGST Deskstar NAS (HDN724040ALE640)
-#   Hitachi/HGST Ultrastar 7K4000 (HUS724020ALE640)
-#   Western Digital Re (WD4000FYYZ)
-#   Western Digital Black (WD6001FZWX)
-#
-# Requires the smartmontools, available at https://www.smartmontools.org
-#
-# Uses: grep, awk, sed, sleep, badblocks
-#
-# Written by Keith Nash, March 2017
-#
-# KN, 8 Apr 2017:
-#   Added minimum test durations because some devices don't return accurate values.
-#   Added code to clean up the log file, removing copyright notices, etc.
-#   No longer echo 'smartctl -t' output to log file as it imparts no useful information.
-#   Emit test results after tests instead of full 'smartctl -a' output.
-#   Emit full 'smartctl -x' output at the end of all testing.
-#   Minor changes to log output and formatting.
-#
-# KN, 12 May 2017:
-#   Added code to poll the disk and check for completed self-tests.
-#
-#   As noted above, some disks don't report accurate values for the short and extended
-#   self-test intervals, sometimes by a significant amount. The original approach using
-#   'fudge' factors wasn't reliable and the script would finish even though the SMART
-#   self-tests had not completed. The new polling code helps insure that this doesn't
-#   happen.
-#
-#   Fixed code to work around annoying differences between sed's behavior on Linux and
-#   FreeBSD.
-#
-# KN, 8 Jun 2017
-#   Modified parsing of short and extended test durations to accommodate the values
-#   returned by larger drives; we needed to strip out the '(' and ')' characters
-#   surrounding the integer value in order to fetch it reliably.
-#
-# KN, 19 Aug 2020
-#	Changed DRY_RUN value so that dry runs are no longer the default setting.
-#	Changed badblocks call to exit immediately on first error.
-#	Set logging directoryto current working directory using pwd command.
-#	Reduced default tests so that we run:
-#		1> Short SMART test
-#		2> badblocks
-#		3> Extended SMART test
-#
-################################################################################
+readonly USAGE=\
+"NAME
+    $(basename "$0") -- disk burn-in program
+
+SYNOPSIS
+    $(basename "$0") [-h] [-e] [-f] [-o <directory>] <disk>
+
+DESCRIPTION
+    A script to simplify the process of burning-in disks. Only intended for use
+    on disks which do not contain any data, such as new disks or disks which
+    are being tested or re-purposed.
+
+    The script runs in dry-run mode by default, so you can check the sleep
+    durations and to insure that the sequence of commands suits your needs. In
+    dry-run mode the script does not actually perform any SMART tests or invoke
+    the sleep or badblocks programs.
+
+    In order to perform tests on drives, you will need to provide the -f option.
+
+OPTIONS
+    -h                show help text
+    -e                show extended help text
+    -f                run in destructive, non-dry mode
+                      ALL DATA ON THE DISK WILL BE LOST!
+    -o <directory>    write log files to <directory> (default: $(pwd))
+    <disk>            disk to burn-in (/dev/ may be omitted)
+
+EXAMPLES
+    $(basename "$0") sda
+                      run in dry-run mode on disk /dev/sda
+
+    $(basename "$0") -f /dev/sdb
+                      run in destructive, non-dry mode on disk /dev/sdb
+
+    $(basename "$0") -f -o ~/burn-in-logs sdc
+                      run in destructive, non-dry mode on disk /dev/sdc and
+                      write the log files to ~/burn-in-logs directory
+"
+readonly USAGE_2=\
+"EXIT STATUS
+    exit 0:           script finishes successfully
+    exit 2:           dependencies are missing
+                      not running as 'root'
+                      illegal options are provided
+
+NOTES
+    Be warned that:
+
+        1> The script runs badblocks in destructive mode, which erases any data
+           on the disk.
+
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           !!!!      ALL DATA ON THE DISK WILL BE LOST! BE CAREFUL!      !!!!
+           !!!! DO NOT RUN THIS SCRIPT ON DISKS CONTAINING VALUABLE DATA !!!!
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        2> Run times for large disks can be several days. Use tmux or screen
+           to test multiple disks in parallel.
+
+        3> Must be run as 'root'.
+
+        4> The script has the following dependencies:
+
+           smartmontools, available at https://www.smartmontools.org
+           Uses: grep, awk, sed, sleep, badblocks
+
+    Performs this test sequence:
+
+        1> Run SMART short test
+        2> Run badblocks
+        3> Run SMART extended test
+
+    The script sleeps after starting each SMART test, using a duration based on
+    the polling interval reported by the disk, after which the script will poll
+    the disk to verify the self-test has completed.
+
+    Full SMART information is pulled after each SMART test. All output except
+    for the sleep command is written to both stdout and the log.
+
+    You should monitor the burn-in progress and watch for errors, particularly
+    any errors reported by badblocks, or these SMART errors:
+
+          5 Reallocated_Sector_Ct
+        196 Reallocated_Event_Count
+        197 Current_Pending_Sector
+        198 Offline_Uncorrectable
+
+    These indicate possible problems with the drive. You therefore may wish to
+    abort the remaining tests and proceed with an RMA exchange for new drives or
+    discard old ones. Please note that this list is not exhaustive.
+
+    The script extracts the drive model and serial number and forms a log file-
+    name of the form 'burnin-[model]_[serial number].log'.
+
+    badblocks is invoked with a block size of 4096, the -wsv options, and the
+    -o option to instruct it to write the list of bad blocks found (if any) to
+    a file named 'burnin-[model]_[serial number].bb'.
+
+    Before using the script on FreeBSD systems (including FreeNAS) you must
+    first execute this sysctl command to alter the kernel's geometry debug
+    flags. This allows badblocks to write to the entire disk:
+
+        sysctl kern.geom.debugflags=0x10
+
+    Also note that badblocks may issue the following warning under FreeBSD /
+    FreeNAS, which can safely be ignored as it has no effect on testing:
+
+        set_o_direct: Inappropiate ioctl for device
+
+    Tested operating systems:
+
+        FreeNAS 9.10.2 (FreeBSD 10.3-STABLE)
+        FreeNAS 11.1-U7 (FreeBSD 11.1-STABLE)
+        FreeNAS 11.2-U8 (FreeBSD 11.2-STABLE)
+        Ubuntu Server 16.04.2 LTS
+        CentOS 7.0
+        Tiny Core Linux 11.1
+
+    Tested disks:
+
+        Intel
+            DC S3700 SSD
+            Model 320 Series SSD
+        HGST
+            Deskstar NAS (HDN724040ALE640)
+            Ultrastar 7K4000 (HUS724020ALE640)
+            Ultrastar He10
+            Ultrastar He12
+        Western Digital
+            Black (WD6001FZWX)
+            Gold
+            Re (WD4000FYYZ)
+        Seagate
+            IronWolf NAS HDD 12TB (ST12000VN0008)
+
+VERSIONS
+    Written by Keith Nash, March 2017
+
+    KN, 8 Apr 2017:
+        Added minimum test durations because some devices don't return accurate
+        values.
+        Added code to clean up the log file, removing copyright notices, etc.
+        No longer echo 'smartctl -t' output to log file as it imparts no useful
+        information.
+        Emit test results after tests instead of full 'smartctl -a' output.
+        Emit full 'smartctl -x' output at the end of all testing.
+        Minor changes to log output and formatting.
+
+    KN, 12 May 2017:
+        Added code to poll the disk and check for completed self-tests.
+
+        As noted above, some disks don't report accurate values for the short
+        and extended self-test intervals, sometimes by a significant amount.
+        The original approach using 'fudge' factors wasn't reliable and the
+        script would finish even though the SMART self-tests had not completed.
+        The new polling code helps insure that this doesn't happen.
+
+        Fixed code to work around annoying differences between sed's behavior
+        on Linux and FreeBSD.
+
+    KN, 8 Jun 2017
+        Modified parsing of short and extended test durations to accommodate the
+        values returned by larger drives; we needed to strip out the '(' and ')'
+        characters surrounding the integer value in order to fetch it reliably.
+
+    KN, 19 Aug 2020
+        Changed DRY_RUN value so that dry runs are no longer the default
+        setting.
+        Changed badblocks call to exit immediately on first error.
+        Set logging directory to current working directory using pwd command.
+        Reduced default tests so that we run:
+            1> Short SMART test
+            2> badblocks
+            3> Extended SMART test
+
+    MS, 9 Sep 2020
+        Add .editorconfig to streamlime editor behavior for developers.
+        Remove dependencies on pcregrep and tr.
+        Add documentation to functions and complex statements.
+        Reduce code duplication, simplify and decouple code where possible.
+        Improve portability and resiliency.
+        Check availability of dependencies during runtim.
+        Check for root privileges during runtime.
+        Add option parsing, most notably (-h)elp and -f for non-dry-run mode.
+        Add dry_run_wrapper() function.
+        Add disk type detection to skip badblocks for non-mechanical drives."
 
 ################################################################################
 # PRE-EXECUTION VALIDATION
 ################################################################################
 
-# Check required dependencies
-readonly DEPENDENCIES="awk badblocks grep sed sleep"
-for dependency in ${DEPENDENCIES}; do
-  if ! command -v "${dependency}" > /dev/null 2>&1 ; then
-    echo "Command '${dependency}' not found" >&2
-    exit 2
-  fi
-done
-
-# Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run as root" >&2
-  exit 2
-fi
-
-readonly USAGE=\
-"$(basename "$0") -- program to burn-in disks
-
-Usage:
-  $(basename "$0") [-h] [-f] [-o <directory>] <disk>
-
-By default the program runs in dry mode and no data will be lost.
-
-Options:
-  -h              show help text
-  -f              run in destructive, non-dry mode
-                  ALL DATA ON THE DISK WILL BE LOST!
-  -o <directory>  write log files to <directory>
-                  default: $(pwd)
-  <disk>          disk to burn-in: /dev/<disk>
-                  e.g. specify 'sda' to burn-in '/dev/sda'"
-
-while getopts ':hfo:' option; do
+# parse options
+while getopts ':hefo:' option; do
   case "${option}" in
     h)  echo "${USAGE}"
         exit
         ;;
-    f)  DRY_RUN=0
+    e)  echo "${USAGE}"
+        echo "${USAGE_2}"
+        exit
+        ;;
+    f)  readonly DRY_RUN=0
         ;;
     o)  LOG_DIR="${OPTARG}"
         ;;
@@ -194,16 +222,32 @@ if [ -z "$1" ]; then
   exit 2
 fi
 
+# Check required dependencies
+readonly DEPENDENCIES="awk badblocks grep sed sleep"
+for dependency in ${DEPENDENCIES}; do
+  if ! command -v "${dependency}" > /dev/null 2>&1; then
+    echo "Command '${dependency}' not found" >&2
+    exit 2
+  fi
+done
+
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run as root" >&2
+  exit 2
+fi
+
 ################################################################################
 # CONSTANTS
 ################################################################################
 
 # Drive to burn-in
-readonly DRIVE="$1"
-
-# Run in dry mode if -f wasn't provided
-[ -z "${DRY_RUN}" ] && DRY_RUN=1
-readonly DRY_RUN
+DRIVE="$1"
+# prepend /dev/ if necessary
+if ! printf '%s' "${DRIVE}" | grep "/dev/\w*" > /dev/null 2>&1; then
+  DRIVE="/dev/${DRIVE}"
+fi
+readonly DRIVE
 
 # Set to working directory if -o <directory> wasn't provided
 [ -z "${LOG_DIR}" ] && LOG_DIR="$(pwd)"
@@ -216,8 +260,8 @@ readonly HOSTNAME="$(hostname)"
 readonly OS_FLAVOR="$(uname)"
 
 # SMART static information
-readonly SMART_INFO="$(smartctl --info "/dev/${DRIVE}")"
-readonly SMART_CAPABILITIES="$(smartctl --capabilities "/dev/${DRIVE}")"
+readonly SMART_INFO="$(smartctl --info "${DRIVE}")"
+readonly SMART_CAPABILITIES="$(smartctl --capabilities "${DRIVE}")"
 
 ##################################################
 # Get SMART information value.
@@ -267,13 +311,20 @@ get_smart_test_duration() {
 # Get disk model
 DISK_MODEL="$(get_smart_info_value "Device Model")"
 [ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Family")"
+[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Number")"
 readonly DISK_MODEL
+
+# Get disk type
+DISK_TYPE="$(get_smart_info_value "Rotation Rate")"
+if printf '%s' "${DISK_TYPE}" | grep "rpm" > /dev/null 2>&1; then
+  DISK_TYPE="mechanical"
+else
+  DISK_TYPE="non-mechanical"
+fi
+readonly DISK_TYPE
 
 # Get disk serial number
 readonly SERIAL_NUMBER="$(get_smart_info_value "Serial Number")"
-
-# The script initially sleeps for a duration after a test is started.
-# Afterwards the completion status is repeatedly polled.
 
 # SMART short test duration
 readonly SHORT_TEST_MINUTES="$(get_smart_test_duration "Short")"
@@ -326,6 +377,94 @@ log_header()
 }
 
 ##################################################
+# Ensure log directory exists and remove old logs.
+# Globals:
+#   LOG_DIR
+#   LOG_FILE
+# Arguments:
+#   None
+##################################################
+init_log() {
+  mkdir -p -- "${LOG_DIR}" || exit 2
+  [ -e "${LOG_FILE}" ] && rm -- "${LOG_FILE}"
+}
+
+##################################################
+# Remove redundant messages from log.
+# Globals:
+#   LOG_FILE
+#   OS_FLAVOR
+# Arguments:
+#   None
+##################################################
+cleanup_log() {
+  if [ "${OS_FLAVOR}" = "Linux" ]; then
+    sed -i -e '/Copyright/d' "${LOG_FILE}"
+    sed -i -e '/=== START OF READ/d' "${LOG_FILE}"
+    sed -i -e '/SMART Attributes Data/d' "${LOG_FILE}"
+    sed -i -e '/Vendor Specific SMART/d' "${LOG_FILE}"
+    sed -i -e '/SMART Error Log Version/d' "${LOG_FILE}"
+  fi
+
+  if [ "${OS_FLAVOR}" = "FreeBSD" ]; then
+    sed -i '' -e '/Copyright/d' "${LOG_FILE}"
+    sed -i '' -e '/=== START OF READ/d' "${LOG_FILE}"
+    sed -i '' -e '/SMART Attributes Data/d' "${LOG_FILE}"
+    sed -i '' -e '/Vendor Specific SMART/d' "${LOG_FILE}"
+    sed -i '' -e '/SMART Error Log Version/d' "${LOG_FILE}"
+  fi
+}
+
+##################################################
+# Log command in dry-run mode, run command otherwise.
+# Globals:
+#   DRY_RUN
+# Arguments:
+#   Command to run.
+##################################################
+dry_run_wrapper()
+{
+  if [ -z "$DRY_RUN" ]; then
+      log_info "DRY RUN: $*"
+      return 0
+  fi
+  eval "$@"
+}
+
+##################################################
+# Log runtime information about current burn-in.
+# Globals:
+#   HOSTNAME
+#   OS_FLAVOR
+#   DRIVE
+#   DISK_TYPE
+#   DISK_MODEL
+#   SERIAL_NUMBER
+#   SHORT_TEST_MINUTES
+#   SHORT_TEST_SECONDS
+#   EXTENDED_TEST_MINUTES
+#   EXTENDED_TEST_SECONDS
+#   LOG_FILE
+#   BB_File
+# Arguments:
+#   None
+##################################################
+log_runtime_info() {
+  log_info "Host:                   ${HOSTNAME}"
+  log_info "OS Flavor:              ${OS_FLAVOR}"
+  log_info "Drive:                  ${DRIVE}"
+  log_info "Disk Type:              ${DISK_TYPE}"
+  log_info "Drive Model:            ${DISK_MODEL}"
+  log_info "Serial Number:          ${SERIAL_NUMBER}"
+  log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes"
+  log_info "                        ${SHORT_TEST_SECONDS} seconds"
+  log_info "Extended test duration: ${EXTENDED_TEST_MINUTES} minutes"
+  log_info "                        ${EXTENDED_TEST_SECONDS} seconds"
+  log_info "Log file:               ${LOG_FILE}"
+  log_info "Bad blocks file:        ${BB_File}"
+}
+
+##################################################
 # Poll repeatedly whether SMART self-test has completed.
 # Globals:
 #   DRIVE
@@ -341,13 +480,15 @@ poll_selftest_complete()
 {
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${POLL_TIMEOUT_SECONDS}" ]; do
-    smartctl --all "/dev/${DRIVE}" | grep -i "The previous self-test routine completed" > /dev/null 2<&1
+    smartctl --all "${DRIVE}" \
+      | grep -i "The previous self-test routine completed" > /dev/null 2>&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test succeeded"
       return 0
     fi
-    smartctl --all "/dev/${DRIVE}" | grep -i "of the test failed." > /dev/null 2<&1
+    smartctl --all "${DRIVE}" \
+      | grep -i "of the test failed\." > /dev/null 2>&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test failed"
@@ -373,17 +514,13 @@ poll_selftest_complete()
 ##################################################
 run_smart_test()
 {
-  log_header "Run SMART $1 test"
-  if [ "${DRY_RUN}" -eq 0 ]; then
-    smartctl --test="$1" "/dev/${DRIVE}"
-    log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
-    sleep "$2"
-    poll_selftest_complete
-    smartctl --log=selftest "/dev/${DRIVE}" | tee -a "${LOG_FILE}"
-  else
-    log_info "Dry run: would start the SMART $1 test and sleep $2 seconds until the test finishes"
-  fi
-  log_info "Finished SMART short test"
+  log_header "Running SMART $1 test"
+  dry_run_wrapper "smartctl --test=\"$1\" \"${DRIVE}\""
+  log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
+  dry_run_wrapper "sleep \"$2\""
+  dry_run_wrapper "poll_selftest_complete"
+  dry_run_wrapper "smartctl --log=selftest \"${DRIVE}\" | tee -a \"${LOG_FILE}\""
+  log_info "Finished SMART $1 test"
 }
 
 ##################################################
@@ -391,6 +528,7 @@ run_smart_test()
 # !!! ALL DATA ON THE DISK WILL BE LOST !!!
 # Globals:
 #   BB_File
+#   DISK_TYPE
 #   DRIVE
 # Arguments:
 #   None
@@ -398,62 +536,51 @@ run_smart_test()
 run_badblocks_test()
 {
   log_header "Running badblocks test"
-  if [ "${DRY_RUN}" -eq 0 ]; then
-    badblocks -b 4096 -wsv -e 1 -o "${BB_File}" "/dev/${DRIVE}"
+  if [ "${DISK_TYPE}" = "mechanical" ]; then
+    dry_run_wrapper "badblocks -b 4096 -wsv -e 1 -o \"${BB_File}\" \"${DRIVE}\""
   else
-    log_info "Dry run: would run badblocks -b 4096 -wsv -e 1 -o ${BB_File} /dev/${DRIVE}"
+    log_info "SKIPPED: badblocks for ${DISK_TYPE} device"
   fi
   log_info "Finished badblocks test"
 }
 
-################################################################################
-# ACTIONS BEGINS HERE
-################################################################################
+##################################################
+# Log extensive SMART and non-SMART drive information.
+# Globals:
+#   DRIVE
+#   LOG_FILE
+# Arguments:
+#   None
+##################################################
+log_full_device_info() {
+  log_header "SMART and non-SMART information"
+  dry_run_wrapper "smartctl --xall --vendorattribute=7,hex48 \"${DRIVE}\" | tee -a \"${LOG_FILE}\""
+}
 
-# Create log directory if it doesn't exist
-mkdir -p -- "${LOG_DIR}" || exit 2
+##################################################
+# Main function of script.
+# Globals:
+#   SHORT_TEST_SECONDS
+#   EXTENDED_TEST_SECONDS
+# Arguments:
+#   None
+##################################################
+main() {
+  init_log
+  log_header "Started burn-in"
 
-if [ -e "${LOG_FILE}" ]; then
-  rm "${LOG_FILE}"
-fi
+  log_runtime_info
 
-log_header "Started burn-in"
+  # test sequence
+  run_smart_test "short" "${SHORT_TEST_SECONDS}"
+  run_badblocks_test
+  run_smart_test "long" "${EXTENDED_TEST_SECONDS}"
 
-log_info "Host:                   ${HOSTNAME}"
-log_info "OS Flavor:              ${OS_FLAVOR}"
-log_info "Drive:                  /dev/${DRIVE}"
-log_info "Drive Model:            ${DISK_MODEL}"
-log_info "Serial Number:          ${SERIAL_NUMBER}"
-log_info "Short test duration:    ${SHORT_TEST_MINUTES} minutes / ${SHORT_TEST_SECONDS} seconds"
-log_info "Extended test duration: ${EXTENDED_TEST_MINUTES} minutes / ${EXTENDED_TEST_SECONDS} seconds"
-log_info "Log file:               ${LOG_FILE}"
-log_info "Bad blocks file:        ${BB_File}"
+  log_full_device_info
 
-# Run the test sequence:
-run_smart_test "short" "${SHORT_TEST_SECONDS}"
-run_badblocks_test
-run_smart_test "long" "${EXTENDED_TEST_SECONDS}"
+  log_header "Finished burn-in"
+  cleanup_log
+}
 
-# Emit full device information to log:
-log_header "SMART and non-SMART information"
-smartctl --xall --vendorattribute=7,hex48 "/dev/${DRIVE}" | tee -a "${LOG_FILE}"
-
-log_header "Finished burn-in"
-
-# Clean up the log file:
-
-if [ "${OS_FLAVOR}" = "Linux" ]; then
-  sed -i -e '/Copyright/d' "${LOG_FILE}"
-  sed -i -e '/=== START OF READ/d' "${LOG_FILE}"
-  sed -i -e '/SMART Attributes Data/d' "${LOG_FILE}"
-  sed -i -e '/Vendor Specific SMART/d' "${LOG_FILE}"
-  sed -i -e '/SMART Error Log Version/d' "${LOG_FILE}"
-fi
-
-if [ "${OS_FLAVOR}" = "FreeBSD" ]; then
-  sed -i '' -e '/Copyright/d' "${LOG_FILE}"
-  sed -i '' -e '/=== START OF READ/d' "${LOG_FILE}"
-  sed -i '' -e '/SMART Attributes Data/d' "${LOG_FILE}"
-  sed -i '' -e '/Vendor Specific SMART/d' "${LOG_FILE}"
-  sed -i '' -e '/SMART Error Log Version/d' "${LOG_FILE}"
-fi
+# Entrypoint
+main

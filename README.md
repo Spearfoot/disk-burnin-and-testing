@@ -8,9 +8,9 @@
 
 Be warned that:
 
-* This script runs the `badblocks` program in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing data you value!__
-* Run times for large disks can take several days to a week or more to complete, so it is a good idea to use `tmux` sessions to prevent mishaps.
-* Must be run as 'root', so either log on using the root account or use the `sudo` command, for example: `sudo ./disk_burnin.sh sda`
+* This script runs `badblocks` in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing valuable data!__
+* Run times for large disks can be several days. Use tmux or screen to test multiple disks in parallel.
+* Must be run as 'root'.
 
 ## Tests
 
@@ -48,29 +48,41 @@ The script extracts the drive model and serial number and creates a log filename
 * `-s` : Show progress
 * `-w` : Write-mode test, writes four patterns (0xaa, 0x55, 0x44, 0x00) on every disk block
 
-The only required command-line argument is the device specifier, e.g.:
+## Usage
 
-`./disk-burnin.sh sda`
+`./disk-burnin.sh [-h] [-f] [-o <directory>] <disk>`
 
-...will run the burn-in test on device /dev/sda
+### Options
 
-## Dry Run Mode
+* `-h`: show help text
+* `-e`: show extended help text
+* `-f`: run in destructive, non-dry mode. **ALL DATA ON THE DISK WILL BE LOST!**
+* `-o <directory>`: write log files to `<directory>` (default: working directory `$(pwd)`)
+* `<disk>`: disk to burn-in (`/dev/` may be omitted)
 
-The script supports a 'dry run mode' which lets you check the sleep duration calculations and insure that the sequence of commands suits your needs without actually performing any operations on disks. In 'dry runs' the script does not perform any SMART tests or invoke the `sleep` or `badblocks` programs.
+### Examples
 
-The script was formerly distributed with 'dry run mode' enabled by default, but this is no longer the case. You will have to edit the script and set the `Dry_Run` variable to a non-zero value to enable 'dry runs'.
+* `./disk-burnin.sh sda`: run in dry-run mode on disk `/dev/sda`
+* `./disk-burnin.sh -f /dev/sdb`: run in destructive, non-dry mode on disk `/dev/sdb`
+* `./disk-burnin.sh -f -o ~/burn-in-logs sdc`: run in destructive, non-dry mode on disk `/dev/sdc` and write the log files to `~/burn-in-logs` directory
+
+## Dry-Run Mode
+
+The script runs in dry-run mode by default, so you can check the sleep durations and to insure that the sequence of commands suits your needs. In dry-run mode the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs.
+
+In order to perform tests on drives, you will need to provide the `-f` option.
 
 ## `smartctl` Device Type
 
 Some users with atypical hardware environments may need to modify the script and specify the `smartctl` command device type explictly with the `-d` option. User __bcmryan__ reports success using `-d sat` with a Western Digital MyBook 8TB external drive enclosure.
 
-## FreeBSD/FreeNAS Notes
+## FreeBSD / FreeNAS Notes
 
-Before using the script on FreeBSD systems (including FreeNAS) you should first execute the `sysctl` command below to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
+Before using the script on FreeBSD systems (including FreeNAS) you must first execute this ´sysctl´ command to alter the kernel's geometry debug flags. This allows `badblocks` to write to the entire disk:
 
 `sysctl kern.geom.debugflags=0x10`
 
-Also note that `badblocks` may issue the following warning under FreeBSD/FreeNAS, which can safely be ignored as it has no effect on testing:
+Also note that `badblocks` may issue the following warning under FreeBSD / FreeNAS, which can safely be ignored as it has no effect on testing:
 
 `set_o_direct: Inappropiate ioctl for device`
 
@@ -83,17 +95,30 @@ Tested under:
 * FreeNAS 11.2-U8 (FreeBSD 11.2-STABLE)
 * Ubuntu Server 16.04.2 LTS
 * CentOS 7.0
+* Tiny Core Linux 11.1
 
 ## Drive Models Tested
 
 The script should run successfully on any SATA disk with SMART capabilities, which includes just about all modern drives. It has been tested on these particular devices:
 
-* HGST Deskstar NAS, UltraStar, UltraStar He10, and UltraStar He12 models
-* Western Digital Gold, Black, and Re models
+* Intel
+  * DC S3700 SSD
+  * Model 320 Series SSD
+* HGST
+  * Deskstar NAS (HDN724040ALE640)
+  * Ultrastar 7K4000 (HUS724020ALE640)
+  * Ultrastar He10
+  * Ultrastar He12
+* Western Digital
+  * Black (WD6001FZWX)
+  * Gold
+  * Re (WD4000FYYZ)
+* Seagate
+  * IronWolf NAS HDD 12TB (ST12000VN0008)
 
 ## Prerequisites
 
-Requires the smartmontools, available at [www.smartmontools.org](https://www.smartmontools.org)
+smartmontools, available at [www.smartmontools.org](https://www.smartmontools.org)
 
 Uses: `grep`, `awk`, `sed`, `sleep`, `badblocks`
 
@@ -102,4 +127,4 @@ Tested with the static analysis tool at [www.shellcheck.net](https://www.shellch
 ## Author
 
 Written by Keith Nash, March 2017.
-Modified on 19 August 2020.
+Modified on 9 September 2020.
