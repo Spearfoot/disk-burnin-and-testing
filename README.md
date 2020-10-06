@@ -42,11 +42,11 @@ The script extracts the drive model and serial number and creates a log filename
 `badblocks` is invoked with the following options:
 
 * `-b 4096` : Use a block size of 4096
-* `-e 1` : Abort the `badblocks` test immediately if an error is found (override this setting with the '-x' option below)
+* `-e 1` : Abort the `badblocks` test immediately if an error is found (override this setting with the `-x` option below)
 * `-v` : Verbose mode
 * `-o` : Write list of bad blocks found (if any) to a file named `burnin-[model]_[serial number].bb`
 * `-s` : Show progress
-* `-w` : Write-mode test, writes four patterns (0xaa, 0x55, 0x44, 0x00) on every disk block
+* `-w` : Write-mode test, writes four patterns (0xaa, 0x55, 0xff, 0x00) on every disk block
 
 ## Usage
 
@@ -56,7 +56,7 @@ The script extracts the drive model and serial number and creates a log filename
 
 * `-h`: show help text
 * `-e`: show extended help text
-* `-f`: run in destructive, non-dry mode. **ALL DATA ON THE DISK WILL BE LOST!**
+* `-f`: run a full, destructive test. Disables the default 'dry-run mode'. **ALL DATA ON THE DISK WILL BE LOST!**
 * `-o <directory>`: write log files to `<directory>` (default: working directory `$(pwd)`)
 * `-x`: perform a full pass of `badblocks`, using the `-e 0` option.
 * `<disk>`: disk to burn-in (`/dev/` may be omitted)
@@ -100,7 +100,7 @@ Tested under:
 
 ## Drive Models Tested
 
-The script should run successfully on any SATA disk with SMART capabilities, which includes just about all modern drives. It has been tested on these particular devices:
+The script should run successfully on any SAS or SATA disk with SMART capabilities, which includes just about all modern drives. It has been tested on these particular devices:
 
 * Intel
   * DC S3700 SSD
@@ -114,6 +114,8 @@ The script should run successfully on any SATA disk with SMART capabilities, whi
   * Black (WD6001FZWX)
   * Gold
   * Re (WD4000FYYZ)
+  * Green
+  * Red
 * Seagate
   * IronWolf NAS HDD 12TB (ST12000VN0008)
 
