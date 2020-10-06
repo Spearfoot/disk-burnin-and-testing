@@ -1,10 +1,35 @@
 #!/bin/sh
+################################################################################
+#
+# disk-burnin.sh
+# 
+################################################################################
+
+################################################################################
+# PRE-EXECUTION VALIDATION
+################################################################################
+
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "ERROR: Must be run as root" >&2
+  exit 2
+fi
+
+# Check required dependencies
+readonly DEPENDENCIES="awk badblocks grep sed sleep smartctl"
+for dependency in ${DEPENDENCIES}; do
+  if ! command -v "${dependency}" > /dev/null 2>&1; then
+    echo "ERROR: Command '${dependency}' not found" >&2
+    exit 2
+  fi
+done
+
 readonly USAGE=\
 "NAME
     $(basename "$0") -- disk burn-in program
 
 SYNOPSIS
-    $(basename "$0") [-h] [-e] [-f] [-o <directory>] <disk>
+    $(basename "$0") [-h] [-e] [-f] [-o <directory>] [-x] <disk>
 
 DESCRIPTION
     A script to simplify the process of burning-in disks. Only intended for use
@@ -19,12 +44,13 @@ DESCRIPTION
     In order to perform tests on drives, you will need to provide the -f option.
 
 OPTIONS
-    -h                show help text
-    -e                show extended help text
-    -f                run in destructive, non-dry mode
+    -h                Show help text
+    -e                Show extended help text
+    -f                Force script to run in destructive mode
                       ALL DATA ON THE DISK WILL BE LOST!
-    -o <directory>    write log files to <directory> (default: $(pwd))
-    <disk>            disk to burn-in (/dev/ may be omitted)
+    -o <directory>    Write log files to <directory> (default: $(pwd))
+    -x                Run full pass of badblocks instead of exiting on first error
+    <disk>            Disk to burn-in (/dev/ may be omitted)
 
 EXAMPLES
     $(basename "$0") sda
@@ -184,14 +210,21 @@ VERSIONS
         Check for root privileges during runtime.
         Add option parsing, most notably (-h)elp and -f for non-dry-run mode.
         Add dry_run_wrapper() function.
-        Add disk type detection to skip badblocks for non-mechanical drives."
+        Add disk type detection to skip badblocks for non-mechanical drives.
 
-################################################################################
-# PRE-EXECUTION VALIDATION
-################################################################################
+    KN, 5 Oct 2020
+        Added -x option to control the badblocks -e option, allowing extended testing.
+        Added smartctl to the list of dependencies.
+        Changed disk type detection so that we assume all drives are mechanical drives
+        unless they explicitly return 'Solid State Drive' for Rotational Rate.
+        Removed datestamp from every line of log output, only emitting it in log headers.
+        Minor reformatting."
+
+# badblocks default -e option is 1, stop testing if a single error occurs
+BB_E_ARG=1
 
 # parse options
-while getopts ':hefo:' option; do
+while getopts ':hefo:x' option; do
   case "${option}" in
     h)  echo "${USAGE}"
         exit
@@ -203,6 +236,8 @@ while getopts ':hefo:' option; do
     f)  readonly DRY_RUN=0
         ;;
     o)  LOG_DIR="${OPTARG}"
+        ;;
+    x)  BB_E_ARG=0  
         ;;
     :)  printf 'Missing argument for -%s\n' "${OPTARG}" >&2
         echo "${USAGE}" >&2
@@ -217,29 +252,16 @@ done
 shift $(( OPTIND - 1 ))
 
 if [ -z "$1" ]; then
-  echo "Missing option: <disk>" >&2
+  echo "ERROR: Missing disk argument" >&2
   echo "${USAGE}" >&2
-  exit 2
-fi
-
-# Check required dependencies
-readonly DEPENDENCIES="awk badblocks grep sed sleep"
-for dependency in ${DEPENDENCIES}; do
-  if ! command -v "${dependency}" > /dev/null 2>&1; then
-    echo "Command '${dependency}' not found" >&2
-    exit 2
-  fi
-done
-
-# Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run as root" >&2
   exit 2
 fi
 
 ################################################################################
 # CONSTANTS
 ################################################################################
+
+readonly BB_E_ARG
 
 # Drive to burn-in
 DRIVE="$1"
@@ -248,6 +270,12 @@ if ! printf '%s' "${DRIVE}" | grep "/dev/\w*" > /dev/null 2>&1; then
   DRIVE="/dev/${DRIVE}"
 fi
 readonly DRIVE
+
+if [ ! -e "$DRIVE" ]; then
+  echo "ERROR: Disk does not exist: $DRIVE" >&2
+  echo "${USAGE}" >&2
+  exit 2
+fi
 
 # Set to working directory if -o <directory> wasn't provided
 [ -z "${LOG_DIR}" ] && LOG_DIR="$(pwd)"
@@ -314,12 +342,11 @@ DISK_MODEL="$(get_smart_info_value "Device Model")"
 [ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Number")"
 readonly DISK_MODEL
 
-# Get disk type
+# Get disk type; unless we get 'Solid State Device' as return value, assume 
+# we have a mechanical drive.
 DISK_TYPE="$(get_smart_info_value "Rotation Rate")"
-if printf '%s' "${DISK_TYPE}" | grep "rpm" > /dev/null 2>&1; then
-  DISK_TYPE="mechanical"
-else
-  DISK_TYPE="non-mechanical"
+if printf '%s' "${DISK_TYPE}" | grep -i "solid_state_device" > /dev/null 2>&1; then
+  DISK_TYPE="SSD"
 fi
 readonly DISK_TYPE
 
@@ -358,10 +385,10 @@ readonly BB_File="${LOG_DIR}/burnin-${DISK_MODEL}_${SERIAL_NUMBER}.bb"
 # Outputs:
 #   Write message to stdout and log file.
 ##################################################
-log_info()
-{
-  now="$(date +"%F %T %Z")"
-  printf "%s\n" "[${now}] $1" | tee -a "${LOG_FILE}"
+log_info() {
+#  now="$(date +"%F %T %Z")"
+#  printf "%s\n" "[${now}] $1" | tee -a "${LOG_FILE}"
+  printf "%s\n" "$1" | tee -a "${LOG_FILE}"
 }
 
 ##################################################
@@ -369,10 +396,9 @@ log_info()
 # Arguments:
 #   Message to log.
 ##################################################
-log_header()
-{
+log_header() {
   log_info "+-----------------------------------------------------------------------------"
-  log_info "+ $1"
+  log_info "+ $1: $(date)"              
   log_info "+-----------------------------------------------------------------------------"
 }
 
@@ -422,8 +448,7 @@ cleanup_log() {
 # Arguments:
 #   Command to run.
 ##################################################
-dry_run_wrapper()
-{
+dry_run_wrapper() {
   if [ -z "$DRY_RUN" ]; then
       log_info "DRY RUN: $*"
       return 0
@@ -451,7 +476,7 @@ dry_run_wrapper()
 ##################################################
 log_runtime_info() {
   log_info "Host:                   ${HOSTNAME}"
-  log_info "OS Flavor:              ${OS_FLAVOR}"
+  log_info "OS:                     ${OS_FLAVOR}"
   log_info "Drive:                  ${DRIVE}"
   log_info "Disk Type:              ${DISK_TYPE}"
   log_info "Drive Model:            ${DISK_MODEL}"
@@ -476,8 +501,7 @@ log_runtime_info() {
 #   0 if success or failure.
 #   1 if timeout threshold exceeded.
 ##################################################
-poll_selftest_complete()
-{
+poll_selftest_complete() {
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${POLL_TIMEOUT_SECONDS}" ]; do
     smartctl --all "${DRIVE}" \
@@ -512,8 +536,7 @@ poll_selftest_complete()
 #     - long
 #   Test duration in seconds.
 ##################################################
-run_smart_test()
-{
+run_smart_test() {
   log_header "Running SMART $1 test"
   dry_run_wrapper "smartctl --test=\"$1\" \"${DRIVE}\""
   log_info "SMART $1 test started, awaiting completion for $2 seconds ..."
@@ -533,11 +556,10 @@ run_smart_test()
 # Arguments:
 #   None
 ##################################################
-run_badblocks_test()
-{
+run_badblocks_test() {
   log_header "Running badblocks test"
-  if [ "${DISK_TYPE}" = "mechanical" ]; then
-    dry_run_wrapper "badblocks -b 4096 -wsv -e 1 -o \"${BB_File}\" \"${DRIVE}\""
+  if [ "${DISK_TYPE}" != "SSD" ]; then
+    dry_run_wrapper "badblocks -b 4096 -wsv -e ${BB_E_ARG} -o \"${BB_File}\" \"${DRIVE}\""
   else
     log_info "SKIPPED: badblocks for ${DISK_TYPE} device"
   fi
@@ -553,7 +575,7 @@ run_badblocks_test()
 #   None
 ##################################################
 log_full_device_info() {
-  log_header "SMART and non-SMART information"
+  log_header "Drive information"
   dry_run_wrapper "smartctl --xall --vendorattribute=7,hex48 \"${DRIVE}\" | tee -a \"${LOG_FILE}\""
 }
 
