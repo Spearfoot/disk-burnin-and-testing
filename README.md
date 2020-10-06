@@ -42,7 +42,7 @@ The script extracts the drive model and serial number and creates a log filename
 `badblocks` is invoked with the following options:
 
 * `-b 4096` : Use a block size of 4096
-* `-e 1` : Abort the test if an error is found (override this setting with the '-x' option below)
+* `-e 1` : Abort the `badblocks` test immediately if an error is found (override this setting with the '-x' option below)
 * `-v` : Verbose mode
 * `-o` : Write list of bad blocks found (if any) to a file named `burnin-[model]_[serial number].bb`
 * `-s` : Show progress
@@ -58,7 +58,7 @@ The script extracts the drive model and serial number and creates a log filename
 * `-e`: show extended help text
 * `-f`: run in destructive, non-dry mode. **ALL DATA ON THE DISK WILL BE LOST!**
 * `-o <directory>`: write log files to `<directory>` (default: working directory `$(pwd)`)
-* `-x`: perform a full pass of `badblocks` instead of exiting on first error
+* `-x`: perform a full pass of `badblocks`, using the `-e 0` option.
 * `<disk>`: disk to burn-in (`/dev/` may be omitted)
 
 ### Examples
