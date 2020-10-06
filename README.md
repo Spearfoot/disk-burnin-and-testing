@@ -50,7 +50,7 @@ The script extracts the drive model and serial number and creates a log filename
 
 ## Usage
 
-`./disk-burnin.sh [-h] [-f] [-o <directory>] <disk>`
+`./disk-burnin.sh [-h] [-e] [-f] [-o <directory>] [-x] <disk>`
 
 ### Options
 
@@ -64,12 +64,12 @@ The script extracts the drive model and serial number and creates a log filename
 ### Examples
 
 * `./disk-burnin.sh sda`: run in dry-run mode on disk `/dev/sda`
-* `./disk-burnin.sh -f /dev/sdb`: run in destructive, non-dry mode on disk `/dev/sdb`
-* `./disk-burnin.sh -f -o ~/burn-in-logs sdc`: run in destructive, non-dry mode on disk `/dev/sdc` and write the log files to `~/burn-in-logs` directory
+* `./disk-burnin.sh -f /dev/sdb`: run full, destructive test on disk `/dev/sdb`
+* `./disk-burnin.sh -f -o ~/burn-in-logs sdc`: run full, destructive test on disk `/dev/sdc` and write the log files to `~/burn-in-logs` directory
 
 ## Dry-Run Mode
 
-The script runs in dry-run mode by default, so you can check the sleep durations and to insure that the sequence of commands suits your needs. In dry-run mode the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs.
+The script runs in dry-run mode by default, so you can check the sleep durations and insure that the sequence of commands suits your needs. In dry-run mode the script does not actually perform any SMART tests or invoke the `sleep` or `badblocks` programs.
 
 In order to perform tests on drives, you will need to provide the `-f` option.
 
