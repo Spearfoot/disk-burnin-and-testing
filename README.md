@@ -9,7 +9,7 @@
 Be warned that:
 
 * This script runs `badblocks` in destructive mode, which erases any data on the disk. Therefore, please be careful! __Do not run this script on disks containing valuable data!__
-* Run times for large disks can be several days. Use tmux or screen to test multiple disks in parallel.
+* Run times for large disks can be several days. Use `tmux` or `screen` to test multiple disks in parallel.
 * Must be run as 'root'.
 
 ## Tests
