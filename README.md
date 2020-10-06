@@ -42,7 +42,7 @@ The script extracts the drive model and serial number and creates a log filename
 `badblocks` is invoked with the following options:
 
 * `-b 4096` : Use a block size of 4096
-* `-e 1` : Abort the test if an error is found (remove this option for full testing of drives)
+* `-e 1` : Abort the test if an error is found (override this setting with the '-x' option below)
 * `-v` : Verbose mode
 * `-o` : Write list of bad blocks found (if any) to a file named `burnin-[model]_[serial number].bb`
 * `-s` : Show progress
@@ -58,6 +58,7 @@ The script extracts the drive model and serial number and creates a log filename
 * `-e`: show extended help text
 * `-f`: run in destructive, non-dry mode. **ALL DATA ON THE DISK WILL BE LOST!**
 * `-o <directory>`: write log files to `<directory>` (default: working directory `$(pwd)`)
+* `-x`: perform a full pass of `badblocks` instead of exiting on first error
 * `<disk>`: disk to burn-in (`/dev/` may be omitted)
 
 ### Examples
@@ -120,11 +121,11 @@ The script should run successfully on any SATA disk with SMART capabilities, whi
 
 smartmontools, available at [www.smartmontools.org](https://www.smartmontools.org)
 
-Uses: `grep`, `awk`, `sed`, `sleep`, `badblocks`
+Uses: `grep`, `awk`, `sed`, `sleep`, `badblocks`, `smartctl`
 
 Tested with the static analysis tool at [www.shellcheck.net](https://www.shellcheck.net) to insure that the code is POSIX-compliant and free of issues.
 
 ## Author
 
-Written by Keith Nash, March 2017.
-Modified on 9 September 2020.
+Original author: Keith Nash, March 2017.
+Modified on 5 October 2020.
