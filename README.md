@@ -118,6 +118,7 @@ The script should run successfully on any SAS or SATA disk with SMART capabiliti
   * Red
 * Seagate
   * IronWolf NAS HDD 12TB (ST12000VN0008)
+  * IronWolf NAS HDD 8TB (ST8000NE001-2M7101)
 
 ## Prerequisites
 
