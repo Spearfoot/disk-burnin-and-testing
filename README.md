@@ -97,6 +97,7 @@ Tested under:
 * Ubuntu Server 16.04.2 LTS
 * CentOS 7.0
 * Tiny Core Linux 11.1
+* Fedora 33 Workstation
 
 ## Drive Models Tested
 
@@ -116,6 +117,7 @@ The script should run successfully on any SAS or SATA disk with SMART capabiliti
   * Re (WD4000FYYZ)
   * Green
   * Red
+  * WD140EDFZ
 * Seagate
   * IronWolf NAS HDD 12TB (ST12000VN0008)
   * IronWolf NAS HDD 8TB (ST8000NE001-2M7101)
@@ -131,4 +133,4 @@ Tested with the static analysis tool at [www.shellcheck.net](https://www.shellch
 ## Author
 
 Original author: Keith Nash, March 2017.
-Modified on 5 October 2020.
+Modified on 19 February 2021.
