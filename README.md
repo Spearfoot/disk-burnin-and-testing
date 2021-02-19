@@ -41,7 +41,7 @@ The script extracts the drive model and serial number and creates a log filename
 
 `badblocks` is invoked with the following options:
 
-* `-b 4096` : Use a block size of 4096
+* `-b 8192` : Use a block size of 8192
 * `-e 1` : Abort the `badblocks` test immediately if an error is found (override this setting with the `-x` option below)
 * `-v` : Verbose mode
 * `-o` : Write list of bad blocks found (if any) to a file named `burnin-[model]_[serial number].bb`
