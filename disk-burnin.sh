@@ -119,7 +119,7 @@ NOTES
     The script extracts the drive model and serial number and forms a log file-
     name of the form 'burnin-[model]_[serial number].log'.
 
-    badblocks is invoked with a block size of 4096, the -wsv options, and the
+    badblocks is invoked with a block size of 8192, the -wsv options, and the
     -o option to instruct it to write the list of bad blocks found (if any) to
     a file named 'burnin-[model]_[serial number].bb'.
 
