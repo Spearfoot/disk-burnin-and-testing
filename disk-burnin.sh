@@ -285,6 +285,8 @@ readonly LOG_DIR
 
 # System information
 readonly HOSTNAME="$(hostname)"
+# Try command hostnamectl if HOSTNAME is unset or empty
+[ -z HOSTNAME ] && readonly HOSTNAME="$(hostnamectl --static)"
 readonly OS_FLAVOR="$(uname)"
 
 # SMART static information
