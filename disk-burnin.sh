@@ -306,13 +306,13 @@ readonly SMART_CAPABILITIES="$(smartctl --capabilities "${DRIVE}")"
 #   Write value to stdout.
 ##################################################
 get_smart_info_value() {
-  # $1=$2="";                     select all but first two columns
+  # gsub(/^.*?:/, "");            discard everything until first colon
   # gsub(/^[ \t]+|[ \t]+$/, "");  replace leading and trailing whitespace
   # gsub(/ /, "_");               replace remaining spaces with underscores
   # printf $1                     print result without newline at the end
   printf '%s' "${SMART_INFO}" \
-    | grep "$1" \
-    | awk '{$1=$2=""; gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/ /, "_"); printf $1}'
+    | grep -i "$1" \
+    | awk '{gsub(/^.*?:/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/ /, "_"); printf $1}'
 }
 
 ##################################################
@@ -337,9 +337,10 @@ get_smart_test_duration() {
 }
 
 # Get disk model
-DISK_MODEL="$(get_smart_info_value "Device Model")"
-[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Family")"
-[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Number")"
+DISK_MODEL="$(get_smart_info_value "Device Model:")"
+[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Family:")"
+[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Model Number:")"
+[ -z "${DISK_MODEL}" ] && DISK_MODEL="$(get_smart_info_value "Product:")"
 readonly DISK_MODEL
 
 # Get disk type; unless we get 'Solid State Device' as return value, assume 
@@ -505,17 +506,17 @@ poll_selftest_complete() {
   l_poll_duration_seconds=0
   while [ "${l_poll_duration_seconds}" -lt "${POLL_TIMEOUT_SECONDS}" ]; do
     smartctl --all "${DRIVE}" \
-      | grep -i "The previous self-test routine completed" > /dev/null 2>&1
-    l_status="$?"
-    if [ "${l_status}" -eq 0 ]; then
-      log_info "SMART self-test succeeded"
-      return 0
-    fi
-    smartctl --all "${DRIVE}" \
       | grep -i "of the test failed\." > /dev/null 2>&1
     l_status="$?"
     if [ "${l_status}" -eq 0 ]; then
       log_info "SMART self-test failed"
+      return 0
+    fi
+    smartctl --all "${DRIVE}" \
+      | grep -E "Self-test execution status:.*(progress|remaining)" > /dev/null 2>&1
+    l_status="$?"
+    if [ "${l_status}" -ne 0 ]; then
+      log_info "SMART self-test succeeded"
       return 0
     fi
     sleep "${POLL_INTERVAL_SECONDS}"
