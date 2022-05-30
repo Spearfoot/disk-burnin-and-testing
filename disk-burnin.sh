@@ -29,7 +29,7 @@ readonly USAGE=\
     $(basename "$0") -- disk burn-in program
 
 SYNOPSIS
-    $(basename "$0") [-h] [-c <num_blocks>] [-e] [-f] [-o <directory>] [-x] <disk>
+    $(basename "$0") [-h] [-b <block_size>] [-c <num_blocks>] [-e] [-f] [-o <directory>] [-x] <disk>
 
 DESCRIPTION
     A script to simplify the process of burning-in disks. Only intended for use
@@ -46,6 +46,7 @@ DESCRIPTION
 OPTIONS
     -h                Show help text
     -e                Show extended help text
+    -b <block_size>   Override block size (defaults to 8192)
     -c <num_blocks>   Override concurrent number of blocks tested
     -f                Force script to run in destructive mode
                       ALL DATA ON THE DISK WILL BE LOST!
@@ -222,16 +223,19 @@ VERSIONS
         Minor reformatting.
 
     KY, 30 May 2022
-        Added -c option to control the badblocks -c option."
+        Added -b & -c options to control respective badblocks options."
 
 # badblocks default -e option is 1, stop testing if a single error occurs
 BB_E_ARG=1
+
+# badblocks default -b option is 1024, but we default to 8192. This allows overriding if desired.
+BB_B_ARG=8192
 
 # badblocks default -c option is 64, and this allows overriding
 BB_C_ARG=64
 
 # parse options
-while getopts ':hefo:c:x' option; do
+while getopts ':hefo:b:c:x' option; do
   case "${option}" in
     h)  echo "${USAGE}"
         exit
@@ -243,6 +247,8 @@ while getopts ':hefo:c:x' option; do
     f)  readonly DRY_RUN=0
         ;;
     o)  LOG_DIR="${OPTARG}"
+        ;;
+    b)  BB_B_ARG="${OPTARG}"
         ;;
     c)  BB_C_ARG="${OPTARG}"
         ;;
@@ -271,6 +277,7 @@ fi
 ################################################################################
 
 readonly BB_E_ARG
+readonly BB_B_ARG
 readonly BB_C_ARG
 
 # Drive to burn-in
@@ -569,7 +576,7 @@ run_smart_test() {
 run_badblocks_test() {
   log_header "Running badblocks test"
   if [ "${DISK_TYPE}" != "SSD" ]; then
-    dry_run_wrapper "badblocks -b 8192 -wsv -c ${BB_C_ARG} -e ${BB_E_ARG} -o \"${BB_File}\" \"${DRIVE}\""
+    dry_run_wrapper "badblocks -b ${BB_B_ARG} -wsv -c ${BB_C_ARG} -e ${BB_E_ARG} -o \"${BB_File}\" \"${DRIVE}\""
   else
     log_info "SKIPPED: badblocks for ${DISK_TYPE} device"
   fi
