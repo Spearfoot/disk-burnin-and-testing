@@ -301,7 +301,10 @@ LOG_DIR="$(printf '%s' "${LOG_DIR}" | awk '{gsub(/\/+$/, ""); printf $1}')"
 readonly LOG_DIR
 
 # System information
-readonly HOSTNAME="$(hostname)"
+HOSTNAME="$(hostname)"
+# Try command hostnamectl if HOSTNAME is unset or empty
+[ -z "${HOSTNAME}" ] && HOSTNAME="$(hostnamectl --static)"
+readonly HOSTNAME
 readonly OS_FLAVOR="$(uname)"
 
 # SMART static information
