@@ -29,7 +29,7 @@ readonly USAGE=\
     $(basename "$0") -- disk burn-in program
 
 SYNOPSIS
-    $(basename "$0") [-h] [-b <block_size>] [-c <num_blocks>] [-e] [-f] [-o <directory>] [-x] <disk>
+    $(basename "$0") [-h] [-b <block_size>] [-c <num_blocks>] [-e] [-f] [-o <directory>] [-p <num_passes>] [-x] <disk>
 
 DESCRIPTION
     A script to simplify the process of burning-in disks. Only intended for use
@@ -46,11 +46,12 @@ DESCRIPTION
 OPTIONS
     -h                Show help text
     -e                Show extended help text
-    -b <block_size>   Override block size (defaults to 8192)
-    -c <num_blocks>   Override concurrent number of blocks tested
+    -b <block_size>   Override block size (default is 8192)
+    -c <num_blocks>   Override concurrent number of blocks tested (default is 64)
     -f                Force script to run in destructive mode
                       ALL DATA ON THE DISK WILL BE LOST!
     -o <directory>    Write log files to <directory> (default: $(pwd))
+    -p <num_passes>   Override number of consecutive scans without bad blocks required (default is 0)
     -x                Run full pass of badblocks instead of exiting on first error
     <disk>            Disk to burn-in (/dev/ may be omitted)
 
@@ -223,7 +224,10 @@ VERSIONS
         Minor reformatting.
 
     KY, 30 May 2022
-        Added -b & -c options to control respective badblocks options."
+        Added -b & -c options to control respective badblocks options.
+
+    MH, 28 Jul 2026
+        Added -p option to control corresponding badblocks option."
 
 # badblocks default -e option is 1, stop testing if a single error occurs
 BB_E_ARG=1
@@ -231,11 +235,14 @@ BB_E_ARG=1
 # badblocks default -b option is 1024, but we default to 8192. This allows overriding if desired.
 BB_B_ARG=8192
 
-# badblocks default -c option is 64, and this allows overriding
+# badblocks default -c option is 64. This allows overriding if desired.
 BB_C_ARG=64
 
+# badblocks default -p option is 0. This allows overriding if desired.
+BB_P_ARG=0
+
 # parse options
-while getopts ':hefo:b:c:x' option; do
+while getopts ':hefo:b:c:p:x' option; do
   case "${option}" in
     h)  echo "${USAGE}"
         exit
@@ -251,6 +258,8 @@ while getopts ':hefo:b:c:x' option; do
     b)  BB_B_ARG="${OPTARG}"
         ;;
     c)  BB_C_ARG="${OPTARG}"
+        ;;
+    p)  BB_P_ARG="${OPTARG}"
         ;;
     x)  BB_E_ARG=0
         ;;
@@ -279,6 +288,7 @@ fi
 readonly BB_E_ARG
 readonly BB_B_ARG
 readonly BB_C_ARG
+readonly BB_P_ARG
 
 # Drive to burn-in
 DRIVE="$1"
@@ -576,7 +586,7 @@ run_smart_test() {
 run_badblocks_test() {
   log_header "Running badblocks test"
   if [ "${DISK_TYPE}" != "SSD" ]; then
-    dry_run_wrapper "badblocks -b ${BB_B_ARG} -wsv -c ${BB_C_ARG} -e ${BB_E_ARG} -o \"${BB_File}\" \"${DRIVE}\""
+    dry_run_wrapper "badblocks -b ${BB_B_ARG} -wsv -c ${BB_C_ARG} -e ${BB_E_ARG} -o \"${BB_File}\" -p ${BB_P_ARG} \"${DRIVE}\""
   else
     log_info "SKIPPED: badblocks for ${DISK_TYPE} device"
   fi

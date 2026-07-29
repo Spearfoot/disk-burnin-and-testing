@@ -42,8 +42,9 @@ The script extracts the drive model and serial number and creates a log filename
 `badblocks` is invoked with the following options:
 
 * `-b 8192` : Use a block size of 8192 (override this setting with the `-b` option below)
+* `-c 64` : Number of concurrent blocks to check (override this setting with the `-c` option below, but beware of memory use with high values)
 * `-e 1` : Abort the `badblocks` test immediately if an error is found (override this setting with the `-x` option below)
-* `-c 64` : Number of concurrent blocks to check. (override this setting with the `-c` option below, but beware of memory use with high values)
+* `-p 0` : number of consecutive scans without bad blocks required (override this setting with the `-p` option below, but beware of execution time with high values)
 * `-v` : Verbose mode
 * `-o` : Write list of bad blocks found (if any) to a file named `burnin-[model]_[serial number].bb`
 * `-s` : Show progress
@@ -51,7 +52,7 @@ The script extracts the drive model and serial number and creates a log filename
 
 ## Usage
 
-`./disk-burnin.sh [-h] [-e] [-b <block_size>] [-c <num_blocks>] [-f] [-o <directory>] [-x] <disk>`
+`./disk-burnin.sh [-h] [-e] [-b <block_size>] [-c <num_blocks>] [-f] [-o <directory>] [-p <num_passes>] [-x] <disk>`
 
 ### Options
 
@@ -61,6 +62,7 @@ The script extracts the drive model and serial number and creates a log filename
 * `-c`: number of concurrent blocks to check (default: 64). Higher values will use more memory.
 * `-f`: run a full, destructive test. Disables the default 'dry-run mode'. **ALL DATA ON THE DISK WILL BE LOST!**
 * `-o <directory>`: write log files to `<directory>` (default: working directory `$(pwd)`)
+* `-p <num_passes>`: number of consecutive scans without bad blocks required (default: 0)
 * `-x`: perform a full pass of `badblocks`, using the `-e 0` option.
 * `<disk>`: disk to burn-in (`/dev/` may be omitted)
 
