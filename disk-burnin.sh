@@ -513,7 +513,9 @@ log_runtime_info() {
   log_info "Extended test duration: ${EXTENDED_TEST_MINUTES} minutes"
   log_info "                        ${EXTENDED_TEST_SECONDS} seconds"
   log_info "Log file:               ${LOG_FILE}"
-  log_info "Bad blocks file:        ${BB_File}"
+  if [ "${DISK_TYPE}" != "SSD" ]; then
+    log_info "Bad blocks file:        ${BB_File}"
+  fi
 }
 
 ##################################################
